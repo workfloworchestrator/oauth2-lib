@@ -5,10 +5,7 @@ setup(
     version="0.1",
     packages=["oauth2_lib"],
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
-    classifiers=[
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.x",
-    ],
+    classifiers=["License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.x"],
     license="MIT",
     author="Automation",
     author_email="automation-nw@surfnet.nl",
