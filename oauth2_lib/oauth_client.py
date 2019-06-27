@@ -2,10 +2,9 @@ from urllib import parse
 
 import requests
 from flask import Blueprint, current_app, redirect, request, session
+from oauth2_lib.api_client import ApiClientProxy
 from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
-
-from nwastdlib.api_client import ApiClientProxy
 
 REDIRECT_STATE = "redirect_state"
 AUTH_SERVER = "oauth2_server"

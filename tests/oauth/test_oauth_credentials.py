@@ -1,7 +1,7 @@
 import requests
 import requests_mock
 from flask_testing import TestCase
-from oauth.oauth_credentials import (
+from oauth2_lib.oauth_credentials import (
     AUTH_RESOURCE_SERVER,
     add_client_credentials_token_header,
     obtain_client_credentials_token,

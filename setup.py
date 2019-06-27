@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="oauth2-lib",
     version="0.1",
-    packages=["oauth"],
+    packages=["oauth2_lib"],
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -14,11 +14,7 @@ setup(
     author="Automation",
     author_email="automation-nw@surfnet.nl",
     description="OAUTH2 lib specific for SURFnet",
-    install_requires=[
-        "flask==1.0.3",
-        "requests==2.22.0",
-        "git+ssh://git@gitlab.surfnet.nl/automation/nwa-stdlib.git@78d76632e3acabf774d12e556676849c7238cd3e#egg=nwastdlib",
-    ],
+    install_requires=["flask==1.0.3", "requests==2.22.0"],
     tests_require=[
         "pytest",
         "flake8",
@@ -34,6 +30,6 @@ setup(
         "mypy",
         "mypy_extensions",
         "requests_mock",
-        "flask_testing"
+        "flask_testing",
     ],
 )

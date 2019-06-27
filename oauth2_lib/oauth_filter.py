@@ -1,9 +1,7 @@
 import flask
 import requests
-from oauth.access_control import AccessControl, UserAttributes
+from oauth2_lib.access_control import AccessControl, UserAttributes
 from werkzeug.exceptions import RequestTimeout, Unauthorized
-
-from nwastdlib.cache import cached_result
 
 
 class OAuthFilter(object):
@@ -59,11 +57,10 @@ class OAuthFilter(object):
             if current_user.active:
                 self.access_rules.is_allowed(current_user, current_request)
             else:
-                raise Unauthorized(description="Provided oauth token is not active: {}".format(token))
+                raise Unauthorized(description="Provided oauth2_lib token is not active: {}".format(token))
 
             flask.g.current_user = current_user
 
-    @cached_result(expiry=30)
     def check_token(self, token):
         try:
             with requests.Session() as s:
@@ -73,7 +70,7 @@ class OAuthFilter(object):
             raise RequestTimeout(description="RequestTimeout from authorization server")
 
         if not token_request.ok:
-            raise Unauthorized(description="Provided oauth token is not valid: {}".format(token))
+            raise Unauthorized(description="Provided oauth2 token is not valid: {}".format(token))
         return token_request.json()
 
     @classmethod
