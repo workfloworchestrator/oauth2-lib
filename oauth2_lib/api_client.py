@@ -1,7 +1,6 @@
 class ApiClientProxy:
     """
-    Proxy over a swagger API client instance that allows passing request
-    headers.
+    Proxy over a swagger API client instance that allows passing request headers.
 
     Where the API client is reused, this proxy is intended to be used on a
     per-request basis.
@@ -52,4 +51,4 @@ class ApiClientProxy:
         return getattr(self.target, name)
 
     def __repr__(self):
-        return "[ApiClientProxy] %s" % repr(self.target)
+        return "[ApiClientProxy] %s".format(repr(self.target))
