@@ -6,7 +6,6 @@ setup(
     packages=["oauth2_lib"],
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
     classifiers=[
-        "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.x",
     ],
