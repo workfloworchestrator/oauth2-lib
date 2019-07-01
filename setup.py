@@ -27,5 +27,6 @@ setup(
         "mypy_extensions",
         "requests_mock",
         "flask_testing",
+        "pre-commit",
     ],
 )
