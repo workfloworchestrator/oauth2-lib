@@ -21,6 +21,7 @@ testing:
       - black . --check
       - isort -rc -c
       - flake8 .
+      - mypy -p oauth2_lib
       - python setup.py install test
     tags:
       - python-lint-ext
