@@ -4,7 +4,7 @@ import uuid
 import requests
 import requests_mock
 from flask_testing import TestCase
-from oauth.oauth_filter import OAuthFilter
+from oauth2_lib.oauth_filter import OAuthFilter
 from ruamel.yaml import YAML
 from tests.utils import create_test_app
 
@@ -72,7 +72,7 @@ class TestOAuthFilter(TestCase):
             m,
             status_code=400,
             response_status_code=401,
-            response_detail="401 Unauthorized: Provided oauth token is not valid: test",
+            response_detail="401 Unauthorized: Provided oauth2 token is not valid: test",
         )
 
     def test_whitelisted_endpoints(self, m):

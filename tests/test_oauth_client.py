@@ -2,7 +2,7 @@ import requests
 import requests_mock
 from flask import session
 from flask_testing import TestCase
-from oauth.oauth_client import add_access_token_header, add_oauth_remote, reload_authentication
+from oauth2_lib.oauth_client import add_access_token_header, add_oauth_remote, reload_authentication
 from tests.utils import create_test_app
 
 ENVIRON_BASE = {"HTTP_AUTHORIZATION": "bearer test"}
@@ -23,7 +23,7 @@ class TestOAuthClient(TestCase):
 
     @requests_mock.Mocker()
     def test_missing_write_scope_for_write_endpoints(self, m):
-        m.get(OAUTH2_BASE_URL + "/oauth/authorize")
+        m.get(OAUTH2_BASE_URL + "/oauth2_lib/authorize")
         response = self.client.post("/hello", environ_base=ENVIRON_BASE)
         self.assertEqual(302, response.status_code)
         self.assertEqual(
