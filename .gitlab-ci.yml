@@ -6,9 +6,21 @@ lint check:
     image: python:3.7
     stage: test
     script:
-      - pip install flake8 flake8-mypy --quiet
-      - flake8
-      - mypy -p oauth2_lib
-      - pytest
+      - pip install flake8 \
+          black \
+          isort \
+          flake8-bandit \
+          flake8-bugbear \
+          flake8-comprehensions \
+          flake8-docstrings \
+          flake8-logging-format \
+          flake8-pep3101 \
+          flake8-print \
+          mypy \
+          mypy_extensions
+      - black . --check
+      - isort -rc -c
+      - flake8 .
+      - python setup.py install test
     tags:
       - python-lint-ext
