@@ -1,6 +1,6 @@
 import sys
 
-from setuptools import setup
+from setuptools import find_packages, setup
 from setuptools.command.test import test as TestCommand
 
 
@@ -26,7 +26,7 @@ class PyTest(TestCommand):
 setup(
     name="oauth2-lib",
     version="0.1",
-    packages=["oauth2_lib"],
+    packages=find_packages(),
     cmdclass={"test": PyTest},
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
     classifiers=["License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3.x"],
