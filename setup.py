@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 
 setup(
     name="oauth2-lib",
-    version="0.1",
+    version="1.0.2",
     packages=find_packages(),
     cmdclass={"test": PyTest},
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
