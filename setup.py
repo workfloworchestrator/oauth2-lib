@@ -3,6 +3,26 @@ import sys
 from setuptools import find_packages, setup
 from setuptools.command.test import test as TestCommand
 
+test_requirements = [
+    "pytest",
+    "flake8",
+    "black",
+    "isort",
+    "flake8-bandit",
+    "flake8-bugbear",
+    "flake8-comprehensions",
+    "flake8-docstrings",
+    "flake8-logging-format",
+    "flake8-pep3101",
+    "flake8-print",
+    "pydocstyle==3.0.0",
+    "mypy",
+    "mypy_extensions",
+    "requests_mock",
+    "flask_testing",
+    "pre-commit",
+]
+
 
 class PyTest(TestCommand):
     user_options = [("pytest-args=", "a", "Arguments to pass into py.test")]
@@ -35,22 +55,6 @@ setup(
     author_email="automation-nw@surfnet.nl",
     description="OAUTH2 lib specific for SURFnet",
     install_requires=["flask<=1.0.3", "requests>=2.19.0", "ruamel.yaml==0.15.97"],
-    tests_require=[
-        "pytest",
-        "flake8",
-        "black",
-        "isort",
-        "flake8-bandit",
-        "flake8-bugbear",
-        "flake8-comprehensions",
-        "flake8-docstrings",
-        "flake8-logging-format",
-        "flake8-pep3101",
-        "flake8-print",
-        "mypy",
-        "mypy_extensions",
-        "requests_mock",
-        "flask_testing",
-        "pre-commit",
-    ],
+    extras_require={"test": test_requirements},
+    tests_require=test_requirements,
 )

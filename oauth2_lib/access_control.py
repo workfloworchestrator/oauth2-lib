@@ -86,12 +86,35 @@ class SABRoles(AbstractCondition):
 
 class Teams(AbstractCondition):
     URN = "urn:collab:group:surfteams.nl:nl:surfnet:diensten:"
-    superuserro = "noc_superuserro_team_for_netwerkdashboard"
-    noc = "noc-engineer"
-    klantsupport = "nwa-automation-klantsupport"
-    changes = "nwa-automation-network-changes"
 
-    valid = {"superuserro": superuserro, "noc": noc, "klantsupport": klantsupport, "changes": changes}
+    admins = "automation-admins"
+    changes = "network-changes"
+    fls = "noc-fls"
+    lir = "network-lir"
+    noc = "noc-engineers"
+    readonly = "automation-read-only"
+    superuserro = "noc_superuserro_team_for_netwerkdashboard"
+    support = "customersupport"
+    ten = "ten"
+
+    valid = {
+        "admins": admins,
+        "automation-admins": admins,
+        "automation-read-only": readonly,
+        "customersupport": support,
+        "fls": fls,
+        "klantsupport": support,
+        "lir": lir,
+        "network-changes": changes,
+        "network-lir": lir,
+        "noc": noc,
+        "noc-engineers": noc,
+        "noc-fls": fls,
+        "readonly": readonly,
+        "superuserro": superuserro,
+        "support": support,
+        "ten": ten,
+    }
 
     def __init__(self, options):
         self.teams = {self.valid[option] for option in options}
