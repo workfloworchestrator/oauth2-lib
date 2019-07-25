@@ -1,7 +1,10 @@
 import flask
 import requests
+import structlog
 from oauth2_lib.access_control import AccessControl, UserAttributes
 from werkzeug.exceptions import RequestTimeout, Unauthorized
+
+log = structlog.get_logger(__name__)
 
 
 class OAuthFilter(object):
@@ -35,17 +38,16 @@ class OAuthFilter(object):
         if is_white_listed:
             return
 
-        # Allow Cross-Origin Resource Sharing calls 
+        # Allow Cross-Origin Resource Sharing calls
         if current_request.method == "OPTIONS":
             return
 
         authorization = current_request.headers.get("Authorization")
         if not authorization:
             # Allow local host calls for health checks
-            if (
-                self.allow_localhost_calls and current_request.base_url.startswith("http://localhost")
-            ):
+            if self.allow_localhost_calls and current_request.base_url.startswith("http://localhost"):
                 return
+            log.debug("No Authorization header found")
 
             raise Unauthorized(description="No Authorization token provided")
         else:
@@ -53,9 +55,12 @@ class OAuthFilter(object):
                 bearer, token = authorization.split()
                 assert bearer.lower() == "bearer"
             except (ValueError, AssertionError):
+                log.debug("Invalid authorization header")
                 raise Unauthorized(description="Invalid authorization header: {}".format(authorization))
 
             token_info = self.check_token(token)
+
+            log.debug("token info", token_info=token_info)
 
             current_user = UserAttributes(token_info)
 
@@ -75,6 +80,7 @@ class OAuthFilter(object):
             raise RequestTimeout(description="RequestTimeout from authorization server")
 
         if not token_request.ok:
+            log.debug("Check token failed.", text=token_request.text, status_code=token_request.status_code)
             raise Unauthorized(description="Provided oauth2 token is not valid: {}".format(token))
         return token_request.json()
 
