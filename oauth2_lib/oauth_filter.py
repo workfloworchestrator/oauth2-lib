@@ -29,25 +29,30 @@ class OAuthFilter(object):
 
     def filter(self):
         current_request = flask.request
-        # Allow Cross-Origin Resource Sharing calls and local health checks
-        if current_request.method == "OPTIONS" or (
-            self.allow_localhost_calls and current_request.base_url.startswith("http://localhost")
-        ):
-            return
-
         endpoint = current_request.endpoint if current_request.endpoint else current_request.base_url
 
         is_white_listed = next(filter(lambda url: endpoint.endswith(url), self.white_listed_urls), None)
         if is_white_listed:
             return
 
+        # Allow Cross-Origin Resource Sharing calls 
+        if current_request.method == "OPTIONS":
+            return
+
         authorization = current_request.headers.get("Authorization")
         if not authorization:
+            # Allow local host calls for health checks
+            if (
+                self.allow_localhost_calls and current_request.base_url.startswith("http://localhost")
+            ):
+                return
+
             raise Unauthorized(description="No Authorization token provided")
         else:
             try:
-                _, token = authorization.split()
-            except ValueError:
+                bearer, token = authorization.split()
+                assert bearer.lower() == "bearer"
+            except (ValueError, AssertionError):
                 raise Unauthorized(description="Invalid authorization header: {}".format(authorization))
 
             token_info = self.check_token(token)
