@@ -51,4 +51,4 @@ class ApiClientProxy:
         return getattr(self.target, name)
 
     def __repr__(self):
-        return "[ApiClientProxy] %s".format(repr(self.target))
+        return f"[ApiClientProxy] {self.target!r}"
