@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import fnmatch
 from abc import ABCMeta, abstractmethod
 from functools import reduce
@@ -29,7 +31,7 @@ class AbstractCondition(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def test(self, user_attributes: "UserAttributes", current_request: Any) -> bool:
+    def test(self, user_attributes: UserAttributes, current_request: Any) -> bool:
         pass
 
 
@@ -329,7 +331,7 @@ class AccessControl(object):
 
             self.rules.append((endpoint, http_methods, checker))
 
-    def is_allowed(self, current_user: Union["UserAttributes", Dict[str, Any]], current_request: Any) -> None:
+    def is_allowed(self, current_user: Union[UserAttributes, Dict[str, Any]], current_request: Any) -> None:
         if not self.rules:
             raise Forbidden(str("No security rules found"))
 
