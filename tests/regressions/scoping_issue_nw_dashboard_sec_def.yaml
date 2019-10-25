@@ -1,0 +1,106 @@
+rules:
+  - endpoint: "*"
+    methods:
+      - "*"
+    conditions:
+      AnyOf:
+        SABRoles:
+          - Infraverantwoordelijke
+          - Infrabeheerder
+          - SuperuserRO
+        Teams:
+          - superuserro
+        Scopes:
+          - "nwa-cert-r"
+          - "nwa-lir-r"
+  - endpoint: "customers.customer_descriptions*"
+    methods:
+      - GET
+    conditions:
+      AnyOf:
+        OrganizationGUID:
+          where: path
+          parameter: customerId
+        SABRoles:
+          - SuperuserRO
+          - Infraverantwoordelijke
+          - Infrabeheerder
+        Teams:
+          - superuserro
+  - endpoint: "customers.customer_description_create"
+    methods:
+      - POST
+    conditions:
+      OrganizationGUID:
+        where: json
+        parameter: customerId
+  - endpoint: "customers.customer_descriptions*"
+    methods:
+      - PUT
+      - DELETE
+    conditions:
+      SABRoles:
+        - Infraverantwoordelijke
+        - Infrabeheerder
+      OrganizationGUID:
+        where: path
+        parameter: customerId
+  - endpoint: "subscriptions.customer"
+    methods:
+      - GET
+    conditions:
+      AnyOf:
+        AllOf:
+          SABRoles:
+            - Infraverantwoordelijke
+            - Infrabeheerder
+          OrganizationGUID:
+            where: path
+            parameter: customerId
+        Teams:
+          - superuserro
+        SABRoles:
+          - SuperuserRO
+      Scopes:
+        - "nwa-cert-r"
+        - "nwa-lir-r"
+  - endpoint: "ipam.ip_prefix_get_all"
+    methods:
+      - HEAD
+      - GET
+    conditions:
+      Scopes:
+        - "nwa-cert-r"
+        - "nwa-mailfilter-r"
+        - "nwa-lir-r"
+        - "nwa-eduroam-r"
+        - "nwa-sn-dashboard-r"
+  - endpoint: "ipam.ip_prefix_by_address"
+    methods:
+      - HEAD
+      - GET
+    conditions:
+      Scopes:
+        - "nwa-cert-r"
+        - "nwa-mailfilter-r"
+        - "nwa-lir-r"
+        - "nwa-eduroam-r"
+        - "nwa-sn-dashboard-r"
+  - endpoint: "ipam.free_ip_prefix_all"
+    methods:
+      - HEAD
+      - GET
+    conditions:
+      Scopes:
+        - "nwa-cert-r"
+        - "nwa-mailfilter-r"
+        - "nwa-lir-r"
+        - "nwa-eduroam-r"
+        - "nwa-sn-dashboard-r"
+  - endpoint: "stats.get_stats_for_subscription"
+    methods:
+      - HEAD
+      - GET
+    conditions:
+      Scopes:
+        - "nwa-netsage-r"
