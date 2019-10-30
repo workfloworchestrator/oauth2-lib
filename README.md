@@ -23,3 +23,6 @@ python setup.py install test
 ```
 
 With this way all requirements are installed for testing and development.
+
+## Development
+Don't forget to update the version number in setup.py before each update to master branch
