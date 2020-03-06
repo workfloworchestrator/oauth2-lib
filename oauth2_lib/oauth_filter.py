@@ -75,7 +75,7 @@ class OAuthFilter(object):
         try:
             with requests.Session() as s:
                 s.auth = self.auth
-                token_request = s.get(self.token_check_url, params={"token": token}, timeout=5)
+                token_request = s.post(self.token_check_url, params={"token": token}, timeout=5)
         except requests.exceptions.Timeout:
             raise RequestTimeout(description="RequestTimeout from authorization server")
 

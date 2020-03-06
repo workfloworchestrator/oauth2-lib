@@ -79,20 +79,20 @@ class TestOAuthFilter(TestCase):
         requests.Session().close()
 
     def test_subscriptions_endpoint_both_scopes(self, m):
-        m.get(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
         response = self.client.get("/dashboard/subscriptions/IP", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)
 
     def test_subscriptions_endpoint_nwa_cert_r(self, m):
         john_doe = dict(JOHN_DOE)
         john_doe.update(scope="nwa-cert-r")
-        m.get(TOKEN_CHECK_URL, json=john_doe, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=john_doe, status_code=200)
         response = self.client.get("/dashboard/subscriptions/IP", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)
 
     def test_subscriptions_endpoint_nwa_lir_r(self, m):
         john_doe = dict(JOHN_DOE)
         john_doe.update(scope="nwa-lir-r")
-        m.get(TOKEN_CHECK_URL, json=john_doe, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=john_doe, status_code=200)
         response = self.client.get("/dashboard/subscriptions/IP", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)

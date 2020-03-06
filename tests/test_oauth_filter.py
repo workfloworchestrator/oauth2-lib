@@ -76,7 +76,7 @@ class TestOAuthFilter(TestCase):
         )
 
     def test_whitelisted_endpoints(self, m):
-        m.get(TOKEN_CHECK_URL, status_code=500)
+        m.post(TOKEN_CHECK_URL, status_code=500)
         response = self.client.get("/config")
         self.assertEqual(200, response.status_code)
 
@@ -86,52 +86,52 @@ class TestOAuthFilter(TestCase):
 
     def test_restricted_endpoint_allow(self, m):
         entitlements = ["urn:mace:surfnet.nl:surfnet.nl:sab:role:Infraverantwoordelijke"]
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
         response = self.client.get("/restricted/endpoint", environ_base=ENVIRON_BASE)
 
         self.assertEqual(200, response.status_code)
         self.assertEqual(b"You are an Infraverantwoordelijke of an institution", response.data)
 
     def test_restricted_endpoint_deny(self, m):
-        m.get(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
         response = self.client.get("/restricted/endpoint", environ_base=ENVIRON_BASE)
 
         self.assertEqual(403, response.status_code)
 
     def test_onlyfor_infrabeheerder_allow(self, m):
         entitlements = ["urn:mace:surfnet.nl:surfnet.nl:sab:role:Infrabeheerder"]
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
         response = self.client.get("/onlyfor/infrabeheerder", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)
         self.assertEqual(b"You are an Infrabeheerder", response.data)
 
     def test_onlyfor_infrabeheerder_deny(self, m):
-        m.get(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
         response = self.client.get("/onlyfor/infrabeheerder", environ_base=ENVIRON_BASE)
         self.assertEqual(403, response.status_code)
         self.assertIn("ROLE", response.json["detail"])
 
     def test_customer_id_deny(self, m):
-        m.get(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
+        m.post(TOKEN_CHECK_URL, json=JOHN_DOE, status_code=200)
         response = self.client.get("/customer/{}".format(CUSTOMER_ID), environ_base=ENVIRON_BASE)
         self.assertEqual(403, response.status_code)
         self.assertIn("Parameter customerId in the request path", response.json["detail"])
 
     def test_wildcard(self, m):
         teams = ["urn:collab:group:surfteams.nl:nl:surfnet:diensten:noc_superuserro_team_for_netwerkdashboard"]
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "edumember_is_member_of": teams}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "edumember_is_member_of": teams}, status_code=200)
         response = self.client.get("/cert_endpoint", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)
 
     def test_invalid_wildcard(self, m):
         scope = "WRONG_SCOPE"
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "scope": scope}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "scope": scope}, status_code=200)
         response = self.client.get("/cert_endpoint", environ_base=ENVIRON_BASE)
         self.assertEqual(403, response.status_code)
 
     def test_cert_only(self, m):
         scope = "nwa-cert"
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "scope": scope}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "scope": scope}, status_code=200)
         response = self.client.get("/cert_endpoint", environ_base=ENVIRON_BASE)
         self.assertEqual(200, response.status_code)
         response = self.client.get("/customer/{}".format(CUSTOMER_ID), environ_base=ENVIRON_BASE)
@@ -139,12 +139,12 @@ class TestOAuthFilter(TestCase):
 
     def test_customer_id_allow(self, m):
         entitlements = ["urn:mace:surfnet.nl:surfnet.nl:sab:organizationGUID:{}".format(CUSTOMER_ID)]
-        m.get(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
+        m.post(TOKEN_CHECK_URL, json={**JOHN_DOE, "eduperson_entitlement": entitlements}, status_code=200)
 
     def _check(
         self, m, json=None, status_code=200, environ_base=ENVIRON_BASE, response_status_code=200, response_detail=None
     ):
-        m.get(TOKEN_CHECK_URL, json=json, status_code=status_code)
+        m.post(TOKEN_CHECK_URL, json=json, status_code=status_code)
         response = self.client.get("/hello", environ_base=environ_base)
 
         self.assertEqual(response_status_code, response.status_code)
