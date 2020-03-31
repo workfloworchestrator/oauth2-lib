@@ -54,7 +54,7 @@ setup(
     author="Automation",
     author_email="automation-nw@surfnet.nl",
     description="OAUTH2 lib specific for SURFnet",
-    install_requires=["flask<=1.0.4", "requests>=2.19.0", "ruamel.yaml==0.15.89", "structlog==19.1.0"],
+    install_requires=["flask<=1.0.4", "requests>=2.19.0", "ruamel.yaml==0.15.100", "structlog==19.1.0"],
     extras_require={"test": test_requirements},
     tests_require=test_requirements,
 )
