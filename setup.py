@@ -6,6 +6,7 @@ from setuptools.command.test import test as TestCommand
 test_requirements = [
     "pytest",
     "pytest-asyncio",
+    "pytest-cov",
     "flake8",
     "black",
     "isort",

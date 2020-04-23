@@ -1,13 +1,9 @@
-from asyncio import get_event_loop
 from unittest import mock
 
 import pytest
 from fastapi import HTTPException, Request
-from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from httpx import AsyncClient, BasicAuth, Response
-from oauth2_lib.openid_bearer import OpenIDBearer, OpenIDConfig
-
-loop = get_event_loop()
+from oauth2_lib.fastapi import OIDCConfig, OIDCUser, opa_decision
 
 discovery = {
     "issuer": "https://connect.test.surfconext.nl",
@@ -158,6 +154,32 @@ id_token = (
 )
 
 
+@pytest.fixture(scope="session")
+def make_mock_async_client():
+    def _make_mock_async_client(json=None, error=None):
+        mock_async_client = mock.MagicMock(spec=AsyncClient)
+
+        if error:
+
+            async def mock_request(*args, **kwargs):
+                raise error
+
+        else:
+
+            async def mock_request(*args, **kwargs):
+                mock_response = mock.MagicMock(spec=Response)
+                mock_response.json.return_value = json
+                mock_response.status_code = 200
+                return mock_response
+
+        mock_async_client.get.side_effect = mock_request
+        mock_async_client.post.side_effect = mock_request
+
+        return mock_async_client
+
+    return _make_mock_async_client
+
+
 class MockBasicAuth(BasicAuth):
     """A helper object that compares equal to BasicAuth."""
 
@@ -165,24 +187,31 @@ class MockBasicAuth(BasicAuth):
         return isinstance(other, BasicAuth) and self.auth_header == other.auth_header
 
 
-@mock.patch.object(AsyncClient, "post")
-def test_introspect_token(mock_async_client_post):
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+@pytest.mark.asyncio
+async def test_openid_config(make_mock_async_client):
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
 
-    async def mock_request(*args, **kwargs):
-        mock_response = mock.MagicMock(spec=Response)
-        mock_response.status_code = 200
-        mock_response.json.return_value = user_info_matching
-        return mock_response
+    mock_async_client = make_mock_async_client(discovery)
 
-    mock_async_client_post.side_effect = mock_request
+    await openid_bearer.check_openid_config(mock_async_client)
 
-    result = loop.run_until_complete(openid_bearer.introspect_token(access_token))
+    assert openid_bearer.openid_config == OIDCConfig.parse_obj(discovery)
+
+    mock_async_client.get.assert_called_once_with("openid_url/.well-known/openid-configuration")
+
+
+@pytest.mark.asyncio
+async def test_introspect_token(make_mock_async_client):
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+
+    mock_async_client = make_mock_async_client(user_info_matching)
+
+    result = await openid_bearer.introspect_token(mock_async_client, access_token)
 
     assert result == user_info_matching
 
-    mock_async_client_post.assert_called_once_with(
+    mock_async_client.post.assert_called_once_with(
         discovery["introspect_endpoint"],
         auth=MockBasicAuth("id", "secret"),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -190,10 +219,12 @@ def test_introspect_token(mock_async_client_post):
     )
 
 
-@mock.patch.object(AsyncClient, "post")
-def test_introspect_exception(mock_async_client_post):
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+@pytest.mark.asyncio
+async def test_introspect_exception():
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+
+    mock_async_client = mock.MagicMock(spec=AsyncClient)
 
     async def mock_request(*args, **kwargs):
         mock_response = mock.MagicMock(spec=Response)
@@ -202,13 +233,14 @@ def test_introspect_exception(mock_async_client_post):
         mock_response.json.return_value = {"error": "error"}
         return mock_response
 
-    mock_async_client_post.side_effect = mock_request
+    mock_async_client.post.side_effect = mock_request
 
     with pytest.raises(HTTPException) as exception:
-        loop.run_until_complete(openid_bearer.introspect_token(access_token))
+        await openid_bearer.introspect_token(mock_async_client, access_token)
+
     assert exception.value.detail == "error"
 
-    mock_async_client_post.assert_called_once_with(
+    mock_async_client.post.assert_called_once_with(
         discovery["introspect_endpoint"],
         auth=MockBasicAuth("id", "secret"),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -217,168 +249,193 @@ def test_introspect_exception(mock_async_client_post):
 
 
 @pytest.mark.asyncio
-async def test_check_user_info_auto_error():
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test", enabled=False)
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+async def test_OIDCUser():
 
     mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {"Authorization": "Bearer creds"}
 
-    assert not await openid_bearer.check_user_info(mock_request, {})
+    async def mock_introspect_token(client, token):
+        return user_info_matching
 
-
-@pytest.mark.asyncio
-async def test_user_info_no_status():
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
-
-    mock_request = mock.MagicMock(spec=Request)
-    with pytest.raises(HTTPException):
-        result = await openid_bearer.check_user_info(mock_request, {"message": "message"})
-        assert result.status_code == 401
-
-
-@mock.patch.object(AsyncClient, "post")
-def test_user_info_user_not_allowed(mock_async_client_post):
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
-
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.url.path = "/test/path"
-    mock_request.method = "GET"
-    mock_future = loop.create_future()
-    mock_future.set_result(mock_request)
-    mock_request.json.return_value = {"result": False, "decision_id": "hoi"}
-
-    mock_async_client_post.return_value = mock_future
-
-    with pytest.raises(HTTPException):
-        result = loop.run_until_complete(openid_bearer.check_user_info(mock_request, user_info_matching))
-        assert result.status_code == 403
-        opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
-        mock_async_client_post.assert_called_with(
-            "https://opa_url.test", json=opa_input, headers={"Content-Type": "application/json"},
-        )
-
-
-@pytest.mark.asyncio
-async def test_opa_unavailable():
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
-
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.url.path = "/test/path"
-    mock_request.method = "GET"
-
-    with pytest.raises(HTTPException):
-        result = await openid_bearer.check_user_info(mock_request, user_info_matching)
-        assert result.status_code == 503
-
-
-@mock.patch.object(AsyncClient, "post")
-def test_network_or_type_error(mock_async_client_post):
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
-
-    mock_future = loop.create_future()
-    mock_future.set_exception(TypeError)
-
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.url.path = "/test/path"
-    mock_request.method = "GET"
-
-    mock_async_client_post.return_value = mock_future
-
-    with pytest.raises(HTTPException):
-        result = loop.run_until_complete(openid_bearer.check_user_info(mock_request, user_info_matching))
-        assert result.status_code == 503
-
-
-@mock.patch.object(AsyncClient, "post")
-def test_user_info_user_allowed(mock_async_client_post):
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
-
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.url.path = "/test/path"
-    mock_request.method = "GET"
-    mock_future = loop.create_future()
-    mock_future.set_result(mock_request)
-    mock_request.json.return_value = {"result": True, "decision_id": "hoi"}
-
-    mock_async_client_post.return_value = mock_future
-
-    loop.run_until_complete(openid_bearer.check_user_info(mock_request, user_info_matching))
-    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
-    mock_async_client_post.assert_called_with("https://opa_url.test", json=opa_input)
-
-
-@mock.patch.object(HTTPBearer, "__call__")
-def test_openid_bearer(mock_http_bearer):
-
-    mock_request = mock.MagicMock(spec=Request)
-    mock_introspect_token = mock.MagicMock(spec=OpenIDBearer.introspect_token)
-    mock_check_user_info = mock.MagicMock(spec=OpenIDBearer.check_user_info)
-
-    mock_future_creds = loop.create_future()
-    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="creds")
-    mock_future_creds.set_result(creds)
-    mock_http_bearer.return_value = mock_future_creds
-
-    mock_future_introspect_result = loop.create_future()
-    mock_future_introspect_result.set_result(user_info_matching)
-    mock_introspect_token.return_value = mock_future_introspect_result
-
-    mock_check_user_info.return_value = mock_future_introspect_result
-
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
     openid_bearer.introspect_token = mock_introspect_token
-    openid_bearer.check_user_info = mock_check_user_info
 
-    result = loop.run_until_complete(openid_bearer.__call__(mock_request))
+    result = await openid_bearer(mock_request)
 
     assert result == user_info_matching
 
 
-@mock.patch.object(HTTPBearer, "__call__")
-def test_openid_bearer_incompatible_schema(mock_http_bearer):
-
+@pytest.mark.asyncio
+async def test_OIDCUser_incompatible_schema():
     mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {"Authorization": "basic creds"}
 
-    mock_future_creds = loop.create_future()
-    creds = HTTPAuthorizationCredentials(scheme="basic", credentials="creds")
-    mock_future_creds.set_result(creds)
-    mock_http_bearer.return_value = mock_future_creds
-
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
 
     with pytest.raises(HTTPException) as exception:
-        loop.run_until_complete(openid_bearer.__call__(mock_request))
+        await openid_bearer(mock_request)
 
-    assert exception.value.status_code == 401
+    assert exception.value.status_code == 403
 
 
-@mock.patch.object(HTTPBearer, "__call__")
-def test_openid_bearer_invalid(mock_http_bearer):
-
+@pytest.mark.asyncio
+async def test_OIDCUser_invalid():
     mock_request = mock.MagicMock(spec=Request)
-    mock_introspect_token = mock.MagicMock(spec=OpenIDBearer.introspect_token)
+    mock_request.headers = {"Authorization": "Bearer creds"}
 
-    mock_future_creds = loop.create_future()
-    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="creds")
-    mock_future_creds.set_result(creds)
-    mock_http_bearer.return_value = mock_future_creds
+    async def mock_introspect_token(client, token):
+        return {"wrong_data": "wrong_data"}
 
-    mock_future_introspect_result = loop.create_future()
-    mock_future_introspect_result.set_result({"wrong_data": "wrong_data"})
-    mock_introspect_token.return_value = mock_future_introspect_result
-
-    openid_bearer = OpenIDBearer("openid_url", "id", "secret", "https://opa_url.test")
-    openid_bearer.openid_config = OpenIDConfig.parse_obj(discovery)
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
     openid_bearer.introspect_token = mock_introspect_token
 
     with pytest.raises(HTTPException) as exception:
-        loop.run_until_complete(openid_bearer.__call__(mock_request))
+        await openid_bearer(mock_request)
 
     assert exception.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_OIDCUser_no_creds_no_error():
+    mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {}
+
+    async def mock_introspect_token(client, token):
+        return {"wrong_data": "wrong_data"}
+
+    openid_bearer = OIDCUser("openid_url", "id", "secret", auto_error=False)
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+    openid_bearer.introspect_token = mock_introspect_token
+
+    result = await openid_bearer(mock_request, None)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_OIDCUser_disabled():
+    mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {"Authorization": "Bearer creds"}
+
+    async def mock_introspect_token(client, token):
+        return {"wrong_data": "wrong_data"}
+
+    openid_bearer = OIDCUser("openid_url", "id", "secret", enabled=False)
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+    openid_bearer.introspect_token = mock_introspect_token
+
+    result = await openid_bearer(mock_request)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_auto_error():
+    def mock_user_info():
+        return {}
+
+    opa_decision_security = opa_decision("https://opa_url.test", mock_user_info, enabled=False)
+
+    mock_request = mock.MagicMock(spec=Request)
+
+    assert await opa_decision_security(mock_request, {}) is None
+
+
+@pytest.fixture
+def mock_request():
+    mock_request = mock.MagicMock(spec=Request)
+    mock_request.url.path = "/test/path"
+    mock_request.method = "GET"
+    return mock_request
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None)
+
+    with pytest.raises(HTTPException) as exception:
+        await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert exception.value.status_code == 403
+    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+# @pytest.mark.asyncio
+# async def test_opa_decision_opa_unavailable(make_mock_async_client, mock_request):
+#     mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
+
+#     opa_decision_security = opa_decision("https://opa_url.test", None)
+
+#     with pytest.raises(HTTPException) as exception:
+#         await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+#     assert exception.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_network_or_type_error(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client(error=TypeError())
+
+    opa_decision_security = opa_decision("https://opa_url.test", None)
+
+    with pytest.raises(HTTPException) as exception:
+        await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert exception.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_user_allowed(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None)
+
+    result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert result is True
+    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_kwargs(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3})
+
+    result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert result is True
+    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_auto_error_not_allowed(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False)
+
+    result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert result is False
+    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_auto_error_allowed(make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False)
+
+    result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert result is True
+    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
