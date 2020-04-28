@@ -12,5 +12,6 @@ testing:
       - flake8 .
       - mypy -p oauth2_lib
       - pytest
+      - pytest -vvv --cov-branch --cov-fail-under=91 --cov=oauth2_lib.fastapi --cov-config=.coveragerc --junitxml=report-pytest.xml tests/test_fastapi.py
     tags:
       - python-lint-ext
