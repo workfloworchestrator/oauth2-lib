@@ -177,7 +177,7 @@ class OIDCUser(HTTPBearer):
         logger.debug("Response from openid introspect", response=data)
 
         if response.status_code not in range(200, 300):
-            logger.error("Introspect cannot find an active token", error=data["error"])
+            logger.error("Introspect cannot find an active token, user unauthorized")
 
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
 
