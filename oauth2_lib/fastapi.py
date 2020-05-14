@@ -71,10 +71,6 @@ class OIDCUserModel(dict):
         return self.get("eduperson_principal_name", "")
 
     @property
-    def email(self) -> str:
-        return self.get("email", "")
-
-    @property
     def memberships(self) -> List[str]:
         return self.get("edumember_is_member_of", [])
 
