@@ -55,10 +55,10 @@ class OIDCUserModel(dict):
 
     @property
     def user_name(self) -> str:
-        if self.get("user_name", None):
-            return self.get("user_name")  # type: ignore
-        elif "unspecified_id" in self.get("unspecified_id", None):
-            return self.get("unspecified_id", "")
+        if "user_name" in self.keys():
+            return self["user_name"]
+        elif "unspecified_id" in self.keys():
+            return self["unspecified_id"]
         else:
             return ""
 
@@ -68,7 +68,7 @@ class OIDCUserModel(dict):
 
     @property
     def principal_name(self) -> str:
-        return self.get("edu_person_principal_name", "")
+        return self.get("eduperson_principal_name", "")
 
     @property
     def email(self) -> str:

@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from fastapi import HTTPException, Request
 from httpx import AsyncClient, BasicAuth, Response
-from oauth2_lib.fastapi import OIDCConfig, OIDCUser, opa_decision
+from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel, opa_decision
 
 discovery = {
     "issuer": "https://connect.test.surfconext.nl",
@@ -77,7 +77,7 @@ user_info = {"active": True, "uids": ["boers"], "updated_at": 1582810910, "scope
 user_info_matching = {
     "active": True,
     "edumember_is_member_of": ["urn:collab:org:surf.nl"],
-    "eduperson_entitlement": ["test:role0"],
+    "eduperson_entitlement": ["urn:mace:surfnet.nl:surfnet.nl:sab:role:role0"],
     "eduperson_principal_name": "boers@surfnet.nl",
     "email": "peter.boers@surfnet.nl",
     "email_verified": True,
@@ -439,3 +439,19 @@ async def test_opa_decision_auto_error_allowed(make_mock_async_client, mock_requ
     assert result is True
     opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+def test_OIDCUserModel():
+    user_model = OIDCUserModel(**user_info_matching)
+    assert user_model.user_name == ""
+    assert user_model.display_name == ""
+    assert user_model.principal_name == "boers@surfnet.nl"
+    assert user_model.email == "peter.boers@surfnet.nl"
+    assert len(user_model.memberships) == 1
+    assert len(user_model.teams) == 0
+    assert len(user_model.entitlements) == 1
+    assert len(user_model.roles) == 1
+    assert user_model.roles == {"role0"}
+    assert user_model.organization_codes == set()
+    assert user_model.organization_guids == set()
+    assert user_model.scopes == {"openid", "test:scope"}
