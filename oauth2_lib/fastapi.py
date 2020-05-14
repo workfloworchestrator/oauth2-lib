@@ -1,5 +1,6 @@
+import re
 from http import HTTPStatus
-from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional
+from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional, Set
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
@@ -47,6 +48,69 @@ class OIDCUserModel(dict):
             if key in self.REGISTERED_CLAIMS:
                 return self.get(key)
             raise error
+
+    """
+    Below this line are SURFnet specific properties that are used often in code to either display or check on.
+    """
+
+    @property
+    def user_name(self) -> str:
+        if self.get("user_name", None):
+            return self.get("user_name")  # type: ignore
+        elif "unspecified_id" in self.get("unspecified_id", None):
+            return self.get("unspecified_id", "")
+        else:
+            return ""
+
+    @property
+    def display_name(self) -> str:
+        return self.get("display_name", "")
+
+    @property
+    def principal_name(self) -> str:
+        return self.get("edu_person_principal_name", "")
+
+    @property
+    def email(self) -> str:
+        return self.get("email", "")
+
+    @property
+    def memberships(self) -> List[str]:
+        return self.get("edumember_is_member_of", [])
+
+    @property
+    def teams(self) -> Set[str]:
+        prefix = "urn:collab:group:surfteams.nl:nl:surfnet:diensten:"
+        length = len(prefix)
+        return {urn[length:] for urn in self.memberships if urn.startswith(prefix)}
+
+    @property
+    def entitlements(self) -> List[str]:
+        return self.get("eduperson_entitlement", [])
+
+    @property
+    def roles(self) -> Set[str]:
+        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:role:"
+        length = len(prefix)
+        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
+
+    @property
+    def organization_codes(self) -> Set[str]:
+        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationCode:"
+        length = len(prefix)
+        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
+
+    @property
+    def organization_guids(self) -> Set[str]:
+        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationGUID:"
+        length = len(prefix)
+        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
+
+    @property
+    def scopes(self) -> Set[str]:
+        if isinstance([], type(self.get("scope"))):
+            return set(self.get("scope"))  # type: ignore
+        return set(re.split("[ ,]", self.get("scope", "")))
 
 
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
