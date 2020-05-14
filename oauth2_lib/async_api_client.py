@@ -1,4 +1,4 @@
-from asyncio import get_event_loop
+from asyncio import new_event_loop
 from http import HTTPStatus
 from typing import Any, Dict
 
@@ -67,13 +67,13 @@ class AsyncAuthMixin:
         self._token = None
         self._tracing_enabled = tracing_enabled
 
-    def acquire_token(self) -> None:
+    async def acquire_token(self) -> None:
         if self._token_acquired:
             return
         else:
             if self._oauth_active:
                 logger.debug("OAuth2 enabled. Requesting access token.", client=self.__class__.__name__)
-                self.get_client_creds_token()
+                await self.get_client_creds_token()
 
     def add_client_creds_token_header(self, headers: Dict[str, Any]) -> Dict[str, Any]:
         """Add header with credentials to existing set of headers.
@@ -90,7 +90,7 @@ class AsyncAuthMixin:
         """
         if self._token:
             access_token = self._token
-            headers["Authorization"] = f"bearer {access_token}"
+            headers["Authorization"] = f"bearer {access_token['access_token']}"
         return headers
 
     async def get_client_creds_token(self, force: bool = False) -> None:
@@ -120,8 +120,8 @@ class AsyncAuthMixin:
         _preload_content=True,
         _request_timeout=None,
     ):
-        loop = get_event_loop()
-        self.acquire_token()
+        loop = new_event_loop()
+        loop.run_until_complete(self.acquire_token())
         if self._tracing_enabled:
             span = opentracing.tracer.active_span
             opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
