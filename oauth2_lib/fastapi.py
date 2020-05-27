@@ -1,5 +1,6 @@
 import re
 from http import HTTPStatus
+from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional, Set
 
 from fastapi import Depends, HTTPException, Request
@@ -268,8 +269,22 @@ def opa_decision(
         """
 
         if enabled:
+            try:
+                if not request.is_disconnected():
+                    json = await request.json()
+                else:
+                    json = {}
+            except (JSONDecodeError, TypeError):
+                json = {}
+
             opa_input = {
-                "input": {**(opa_kwargs or {}), **user_info, "resource": request.url.path, "method": request.method}
+                "input": {
+                    **(opa_kwargs or {}),
+                    **user_info,
+                    "resource": request.url.path,
+                    "method": request.method,
+                    "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
+                }
             }
 
             logger.debug("Posting input json to Policy agent", input=opa_input)
