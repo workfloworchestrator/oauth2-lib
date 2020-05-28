@@ -42,7 +42,7 @@ class AsyncAuthMixin:
         class FubarApiClient(AuthMixin, fubar_client.ApiClient)
             pass
 
-    Calls to the Fubar API can now be make as follows::
+    Calls to the Fubar API can now be made as follows:
 
         from fubar_client import BlahApi
 
