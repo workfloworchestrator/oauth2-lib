@@ -47,7 +47,7 @@ class PyTest(TestCommand):
 
 setup(
     name="oauth2-lib",
-    version="1.0.8",
+    version="1.0.9",
     packages=find_packages(),
     cmdclass={"test": PyTest},
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
@@ -63,6 +63,9 @@ setup(
         "structlog==19.1.0",
         "fastapi>=0.54.1",
         "httpx>=0.12.0",
+        "authlib==0.14",
+        "pydantic",
+        "opentracing==2.3.0",
     ],
     extras_require={"test": test_requirements},
     tests_require=test_requirements,
