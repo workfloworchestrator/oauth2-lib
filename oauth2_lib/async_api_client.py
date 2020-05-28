@@ -1,6 +1,6 @@
 from asyncio import new_event_loop
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import opentracing
 import structlog
@@ -75,7 +75,7 @@ class AsyncAuthMixin:
                 logger.debug("OAuth2 enabled. Requesting access token.", client=self.__class__.__name__)
                 await self.get_client_creds_token()
 
-    def add_client_creds_token_header(self, headers: Dict[str, Any]) -> Dict[str, Any]:
+    def add_client_creds_token_header(self, headers: Optional[Dict[str, Any]]) -> None:
         """Add header with credentials to an existing set of headers.
 
         This function assumes the `access_token` has been set in the application configuration
@@ -88,10 +88,10 @@ class AsyncAuthMixin:
             New set of headers.
 
         """
+        headers = {} if headers is None else headers
         if self._token:
             access_token = self._token
             headers["Authorization"] = f"bearer {access_token['access_token']}"
-        return headers
 
     async def get_client_creds_token(self, force: bool = False) -> None:
         """Conditionally fetch access_token.
@@ -126,7 +126,7 @@ class AsyncAuthMixin:
             opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
 
         try:
-            headers = self.add_client_creds_token_header(headers)
+            self.add_client_creds_token_header(headers)
             return super().request(
                 method, url, query_params, headers, post_params, body, _preload_content, _request_timeout,
             )
@@ -134,7 +134,7 @@ class AsyncAuthMixin:
             if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
                 logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
                 loop.run_until_complete(self.get_client_creds_token(force=True))
-                headers = self.add_client_creds_token_header(headers)
+                self.add_client_creds_token_header(headers)
                 return super().request(
                     method, url, query_params, headers, post_params, body, _preload_content, _request_timeout,
                 )
