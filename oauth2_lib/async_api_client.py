@@ -76,13 +76,13 @@ class AsyncAuthMixin:
                 await self.get_client_creds_token()
 
     def add_client_creds_token_header(self, headers: Dict[str, Any]) -> Dict[str, Any]:
-        """Add header with credentials to existing set of headers.
+        """Add header with credentials to an existing set of headers.
 
         This function assumes the `access_token` has been set in the application configuration
         by `get_client_creds_token`.
 
         Args:
-            headers: Existing set of headers that need to be extend with an Authorization header.
+            headers: Existing set of headers that need to be extended with an Authorization header.
 
         Returns:
             New set of headers.
@@ -97,7 +97,6 @@ class AsyncAuthMixin:
         """Conditionally fetch access_token.
 
         Args:
-            app: Application object that has a config attribute.
             force: Force the fetch, even if the access_token is already in the application configuration.
 
         """

@@ -78,15 +78,15 @@ user_info_matching = {
     "active": True,
     "edumember_is_member_of": ["urn:collab:org:surf.nl"],
     "eduperson_entitlement": ["urn:mace:surfnet.nl:surfnet.nl:sab:role:role0"],
-    "eduperson_principal_name": "boers@surfnet.nl",
-    "email": "peter.boers@surfnet.nl",
+    "eduperson_principal_name": "doe@surfnet.nl",
+    "email": "john.doe@surfnet.nl",
     "email_verified": True,
-    "family_name": "Boers",
-    "given_name": "Peter",
-    "name": "Peter Boers",
+    "family_name": "Doe",
+    "given_name": "John",
+    "name": "John Doe",
     "schac_home_organization": "surfnet.nl",
     "sub": "327fb66ce785099a2b9647ff05f2d57858c27d01",
-    "uids": ["boers"],
+    "uids": ["John"],
     "updated_at": 1582810910,
     "scope": "openid test:scope",
     "client_id": mock.ANY,
@@ -349,6 +349,7 @@ def mock_request():
     mock_request = mock.MagicMock(spec=Request)
     mock_request.url.path = "/test/path"
     mock_request.method = "GET"
+    mock_request.path_params = {}
     return mock_request
 
 
@@ -362,7 +363,14 @@ async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_reques
         await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert exception.value.status_code == 403
-    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
+    opa_input = {
+        "input": {
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
 
 
@@ -398,7 +406,14 @@ async def test_opa_decision_user_allowed(make_mock_async_client, mock_request):
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert result is True
-    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "GET"}}
+    opa_input = {
+        "input": {
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
 
 
@@ -411,7 +426,15 @@ async def test_opa_decision_kwargs(make_mock_async_client, mock_request):
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert result is True
-    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    opa_input = {
+        "input": {
+            "extra": 3,
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
 
 
@@ -424,7 +447,15 @@ async def test_opa_decision_auto_error_not_allowed(make_mock_async_client, mock_
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert result is False
-    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    opa_input = {
+        "input": {
+            "extra": 3,
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
 
 
@@ -433,11 +464,18 @@ async def test_opa_decision_auto_error_allowed(make_mock_async_client, mock_requ
     mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
 
     opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False)
-
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert result is True
-    opa_input = {"input": {"extra": 3, **user_info_matching, "resource": "/test/path", "method": "GET"}}
+    opa_input = {
+        "input": {
+            "extra": 3,
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
     mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
 
 
@@ -445,8 +483,8 @@ def test_OIDCUserModel():
     user_model = OIDCUserModel(**user_info_matching)
     assert user_model.user_name == ""
     assert user_model.display_name == ""
-    assert user_model.principal_name == "boers@surfnet.nl"
-    assert user_model.email == "peter.boers@surfnet.nl"
+    assert user_model.principal_name == "doe@surfnet.nl"
+    assert user_model.email == "john.doe@surfnet.nl"
     assert len(user_model.memberships) == 1
     assert len(user_model.teams) == 0
     assert len(user_model.entitlements) == 1
