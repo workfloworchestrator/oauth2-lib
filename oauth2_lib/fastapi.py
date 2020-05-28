@@ -105,7 +105,7 @@ class OIDCUserModel(dict):
 
     @property
     def scopes(self) -> Set[str]:
-        if isinstance([], type(self.get("scope"))):
+        if isinstance(self.get("scope"), list):
             return set(self.get("scope"))  # type: ignore
         return set(re.split("[ ,]", self.get("scope", "")))
 
@@ -274,6 +274,9 @@ def opa_decision(
                     json = await request.json()
                 else:
                     json = {}
+            # Silencing the Decode error or Type error when request.json() does not return anything sane.
+            # Some requests do not have a json respone therefore as this code gets called on every request
+            # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
             except (JSONDecodeError, TypeError):
                 json = {}
 
