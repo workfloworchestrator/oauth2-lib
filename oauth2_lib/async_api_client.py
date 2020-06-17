@@ -122,8 +122,13 @@ class AsyncAuthMixin:
         loop = new_event_loop()
         loop.run_until_complete(self.acquire_token())
         if self._tracing_enabled:
-            span = opentracing.tracer.active_span
-            opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
+            tracer = opentracing.global_tracer()
+            span = tracer.active_span
+            if span is None:
+                span = tracer.start_span(operation_name=url, tags={"http.url": url, "http.method": method})
+                opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
+            else:
+                opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
 
         try:
             self.add_client_creds_token_header(headers)
