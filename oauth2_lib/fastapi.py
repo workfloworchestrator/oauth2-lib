@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
 from httpx import AsyncClient, BasicAuth, NetworkError
 from pydantic import BaseModel
+from starlette.requests import ClientDisconnect
 from structlog import get_logger
 
 logger = get_logger(__name__)
@@ -270,14 +271,11 @@ def opa_decision(
 
         if enabled:
             try:
-                if not request.is_disconnected():
-                    json = await request.json()
-                else:
-                    json = {}
+                json = await request.json()
             # Silencing the Decode error or Type error when request.json() does not return anything sane.
             # Some requests do not have a json respone therefore as this code gets called on every request
             # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
-            except (JSONDecodeError, TypeError):
+            except (JSONDecodeError, TypeError, ClientDisconnect):
                 json = {}
 
             opa_input = {
