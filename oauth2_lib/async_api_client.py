@@ -63,23 +63,14 @@ class AsyncAuthMixin:
         super().__init__(*args, **kwargs)  # type:ignore
         self._oauth_client: RemoteApp = getattr(oauth_client, oauth_client_name)
         self._oauth_active = oauth_active
-        self._token_acquired = False
         self._token = None
         self._tracing_enabled = tracing_enabled
-
-    async def acquire_token(self) -> None:
-        if self._token_acquired:
-            return
-        else:
-            if self._oauth_active:
-                logger.debug("OAuth2 enabled. Requesting access token.", client=self.__class__.__name__)
-                await self.get_client_creds_token()
 
     def add_client_creds_token_header(self, headers: Optional[Dict[str, Any]]) -> None:
         """Add header with credentials to an existing set of headers.
 
         This function assumes the `access_token` has been set in the application configuration
-        by `get_client_creds_token`.
+        by `refresh_client_creds_token or by acquire_token`.
 
         Args:
             headers: Existing set of headers that need to be extended with an Authorization header.
@@ -88,25 +79,31 @@ class AsyncAuthMixin:
             New set of headers.
 
         """
+        if not self._token and self._oauth_active:
+            loop = new_event_loop()
+            loop.run_until_complete(self.refresh_client_creds_token())
         headers = {} if headers is None else headers
         if self._token:
             access_token = self._token
             headers["Authorization"] = f"bearer {access_token['access_token']}"
 
-    async def get_client_creds_token(self, force: bool = False) -> None:
-        """Conditionally fetch access_token.
+    async def refresh_client_creds_token(self, force: bool = False) -> None:
+        """
+        Conditionally fetch access_token.
+
+        This method will either set the token if it is not set or reset the token if Force is added,
+        otherwise it will just return.
 
         Args:
             force: Force the fetch, even if the access_token is already in the application configuration.
 
         """
-        if self._token_acquired and not force:
+        if self._token and not force:
             return
         elif force:
             self._token = await self._oauth_client.fetch_access_token()
         else:
             self._token = await self._oauth_client.fetch_access_token()
-            self._token_acquired = True
 
     def request(
         self,
@@ -119,8 +116,6 @@ class AsyncAuthMixin:
         _preload_content=True,
         _request_timeout=None,
     ):
-        loop = new_event_loop()
-        loop.run_until_complete(self.acquire_token())
         if self._tracing_enabled:
             tracer = opentracing.global_tracer()
             span = tracer.active_span
@@ -138,7 +133,8 @@ class AsyncAuthMixin:
         except Exception as ex:
             if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
                 logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
-                loop.run_until_complete(self.get_client_creds_token(force=True))
+                loop = new_event_loop()
+                loop.run_until_complete(self.refresh_client_creds_token(force=True))
                 self.add_client_creds_token_header(headers)
                 return super().request(
                     method, url, query_params, headers, post_params, body, _preload_content, _request_timeout,
