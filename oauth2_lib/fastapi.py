@@ -235,7 +235,11 @@ class OIDCUser(HTTPBearer):
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
-        data = dict(response.json())
+        try:
+            data = dict(response.json())
+        except JSONDecodeError:
+            logger.exception("Unable to parse introspect response")
+            raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
         logger.debug("Response from openid introspect", response=data)
 
         if response.status_code not in range(200, 300):
