@@ -1,6 +1,7 @@
 import requests
-from oauth2_lib.api_client import ApiClientProxy
 from werkzeug.exceptions import Unauthorized
+
+from oauth2_lib.api_client import ApiClientProxy
 
 AUTH_RESOURCE_SERVER = "auth_resource_server"
 SCOPES = ["read", "write", "admin"]

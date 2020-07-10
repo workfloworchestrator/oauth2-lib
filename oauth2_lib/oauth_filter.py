@@ -1,8 +1,9 @@
 import flask
 import requests
 import structlog
-from oauth2_lib.access_control import AccessControl, UserAttributes
 from werkzeug.exceptions import RequestTimeout, Unauthorized
+
+from oauth2_lib.access_control import AccessControl, UserAttributes
 
 log = structlog.get_logger(__name__)
 
