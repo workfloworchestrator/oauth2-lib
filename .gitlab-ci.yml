@@ -7,8 +7,8 @@ testing:
     stage: test
     script:
       - pip install .[test]
-      - black . --check
-      - isort -rc -c
+      - black --check .
+      - isort -c oauth2_lib
       - flake8 .
       - mypy -p oauth2_lib
       - pytest
