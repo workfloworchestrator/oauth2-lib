@@ -128,7 +128,7 @@ class AsyncAuthMixin:
         try:
             self.add_client_creds_token_header(headers)
             return super().request(
-                method, url, query_params, headers, post_params, body, _preload_content, _request_timeout,
+                method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
             )
         except Exception as ex:
             if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
@@ -137,7 +137,7 @@ class AsyncAuthMixin:
                 loop.run_until_complete(self.refresh_client_creds_token(force=True))
                 self.add_client_creds_token_header(headers)
                 return super().request(
-                    method, url, query_params, headers, post_params, body, _preload_content, _request_timeout,
+                    method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
                 )
 
             else:

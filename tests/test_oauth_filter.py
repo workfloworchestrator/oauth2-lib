@@ -4,8 +4,9 @@ import uuid
 import requests
 import requests_mock
 from flask_testing import TestCase
-from oauth2_lib.oauth_filter import OAuthFilter
 from ruamel.yaml import YAML
+
+from oauth2_lib.oauth_filter import OAuthFilter
 from tests.utils import create_test_app
 
 ENVIRON_BASE = {"HTTP_AUTHORIZATION": "bearer test"}
