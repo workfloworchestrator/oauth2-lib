@@ -47,7 +47,7 @@ class PyTest(TestCommand):
 
 setup(
     name="oauth2-lib",
-    version="1.0.14",
+    version="1.0.15",
     packages=find_packages(),
     cmdclass={"test": PyTest},
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
@@ -57,7 +57,7 @@ setup(
     author_email="automation-nw@surfnet.nl",
     description="OAUTH2 lib specific for SURFnet",
     install_requires=[
-        "flask<=1.0.4",
+        "flask>=1.0.4",
         "requests>=2.19.0",
         "ruamel.yaml~=0.16.10",
         "structlog~=20.1.0",
