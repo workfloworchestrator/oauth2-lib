@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 from fastapi import HTTPException, Request
 from httpx import AsyncClient, BasicAuth, Response
+
 from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel, opa_decision
 
 discovery = {

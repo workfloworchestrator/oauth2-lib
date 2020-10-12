@@ -164,7 +164,7 @@ class OIDCUser(HTTPBearer):
         resource_server_secret: str,
         enabled: bool = True,
         auto_error: bool = True,
-        scheme_name: str = None,
+        scheme_name: Optional[str] = None,
     ):
         super().__init__(auto_error=auto_error)
         self.openid_url = openid_url
@@ -174,7 +174,7 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(  # type:ignore
-        self, request: Request, async_client: AsyncClient = Depends(async_client),
+        self, request: Request, async_client: AsyncClient = Depends(async_client)
     ) -> Optional[OIDCUserModel]:
         """
         Return the OIDC user from OIDC introspect endpoint.
