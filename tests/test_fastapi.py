@@ -185,7 +185,7 @@ class MockBasicAuth(BasicAuth):
     """A helper object that compares equal to BasicAuth."""
 
     def __eq__(self, other):
-        return isinstance(other, BasicAuth)
+        return isinstance(other, BasicAuth) and self._auth_header == other._auth_header
 
 
 @pytest.mark.asyncio
