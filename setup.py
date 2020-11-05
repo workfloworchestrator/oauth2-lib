@@ -63,7 +63,7 @@ setup(
         "structlog~=20.1.0",
         "fastapi>=0.54.1",
         "httpx~=0.16.1",
-        "authlib==0.14",
+        "authlib==0.15.2",
         "pydantic",
         "opentracing==2.3.0",
     ],
