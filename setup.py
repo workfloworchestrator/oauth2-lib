@@ -62,7 +62,7 @@ setup(
         "ruamel.yaml~=0.16.10",
         "structlog~=20.1.0",
         "fastapi>=0.54.1",
-        "httpx~=0.16.0",
+        "httpx~=0.16.1",
         "authlib==0.14",
         "pydantic",
         "opentracing==2.3.0",

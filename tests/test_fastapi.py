@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+import typing
 from fastapi import HTTPException, Request
 from httpx import AsyncClient, BasicAuth, Response
 
@@ -185,7 +186,7 @@ class MockBasicAuth(BasicAuth):
     """A helper object that compares equal to BasicAuth."""
 
     def __eq__(self, other):
-        return isinstance(other, BasicAuth) and self.auth_header == other.auth_header
+        return isinstance(other, BasicAuth)
 
 
 @pytest.mark.asyncio
