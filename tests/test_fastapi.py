@@ -1,7 +1,6 @@
 from unittest import mock
 
 import pytest
-import typing
 from fastapi import HTTPException, Request
 from httpx import AsyncClient, BasicAuth, Response
 
