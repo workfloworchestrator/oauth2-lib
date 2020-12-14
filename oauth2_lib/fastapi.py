@@ -133,7 +133,6 @@ class OIDCConfig(BaseModel):
     claims_supported: List[str]
     claims_parameter_supported: bool
     request_parameter_supported: bool
-    acr_values_supported: List[str]
     code_challenge_methods_supported: List[str]
 
 

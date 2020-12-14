@@ -64,11 +64,6 @@ discovery = {
     ],
     "claims_parameter_supported": True,
     "request_parameter_supported": True,
-    "acr_values_supported": [
-        "http://test.surfconext.nl/assurance/loa1",
-        "http://test.surfconext.nl/assurance/loa2",
-        "http://test.surfconext.nl/assurance/loa3",
-    ],
     "code_challenge_methods_supported": ["plain", "S256"],
 }
 
