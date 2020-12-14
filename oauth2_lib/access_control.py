@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import fnmatch
 from abc import ABCMeta, abstractmethod
 from functools import reduce
-from typing import Any, Dict, List, Set, Tuple, Union
-
-from werkzeug.exceptions import Forbidden
+from typing import Any, List, Tuple
 
 
 class InvalidRuleDefinition(Exception):
@@ -31,7 +28,7 @@ class AbstractCondition(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def test(self, user_attributes: UserAttributes, current_request: Any) -> bool:
+    def test(self, user_attributes, current_request) -> bool:
         pass
 
 
@@ -192,174 +189,4 @@ class OrganizationGUID(AbstractCondition):
             return json.get(self.param) in user_attributes.organization_guids
 
 
-class UserAttributes(object):
-    def __init__(self, oauth_attrs):
-        self.oauth_attrs = oauth_attrs
-
-    def __json__(self) -> Dict:
-        return self.oauth_attrs
-
-    def __str__(self):
-        return str(self.oauth_attrs)
-
-    def __getitem__(self, item):
-        return self.oauth_attrs[item]
-
-    @property
-    def active(self):
-        return self.oauth_attrs.get("active", False)
-
-    @property
-    def authenticating_authority(self) -> str:
-        return self.oauth_attrs.get("authenticating_authority", "")
-
-    @property
-    def display_name(self) -> str:
-        return self.oauth_attrs.get("display_name", "")
-
-    @property
-    def principal_name(self) -> str:
-        return self.oauth_attrs.get("edu_person_principal_name", "")
-
-    @property
-    def email(self) -> str:
-        return self.oauth_attrs.get("email", "")
-
-    @property
-    def memberships(self) -> List[str]:
-        return self.oauth_attrs.get("edumember_is_member_of", [])
-
-    @property
-    def entitlements(self) -> List[str]:
-        return self.oauth_attrs.get("eduperson_entitlement", [])
-
-    @property
-    def roles(self) -> Set[str]:
-        prefix = SABRoles.URN
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def scopes(self) -> Set[str]:
-        if isinstance([], type(self.oauth_attrs.get("scope"))):
-            return set(self.oauth_attrs.get("scope"))
-        return set(self.oauth_attrs.get("scope", "").split(" "))
-
-    @property
-    def teams(self) -> Set[str]:
-        prefix = Teams.URN
-        length = len(prefix)
-        return {urn[length:] for urn in self.memberships if urn.startswith(prefix)}
-
-    @property
-    def organization_codes(self) -> Set[str]:
-        prefix = TargetOrganizations.URN
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def organization_guids(self) -> Set[str]:
-        prefix = OrganizationGUID.URN
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def user_name(self):
-        if "user_name" in self.oauth_attrs:
-            return self.oauth_attrs.get("user_name")
-        elif "unspecified_id" in self.oauth_attrs:
-            return self.oauth_attrs.get("unspecified_id", "")
-        else:
-            return ""
-
-
 Rules = List[Tuple[str, List[str], AbstractCondition]]
-
-
-class AccessControl(object):
-
-    VALID_HTTP_METHODS = {"*", "DELETE", "PATCH", "GET", "HEAD", "POST", "PUT"}
-
-    def __init__(self, security_definitions):
-        self.security_definitions: Dict[str, Any] = security_definitions
-
-        self.rules: Rules = []
-
-        if security_definitions is None or "rules" not in security_definitions:
-            return
-
-        for counter, definition in enumerate(self.security_definitions["rules"]):
-            try:
-                endpoint = definition["endpoint"]
-            except KeyError:
-                raise InvalidRuleDefinition("Missing endpoint", counter, definition)
-
-            try:
-                http_methods = definition["methods"]
-            except KeyError:
-                raise InvalidRuleDefinition("Missing HTTP methods", counter, definition)
-
-            for http_method in http_methods:
-                if http_method not in self.VALID_HTTP_METHODS:
-                    raise InvalidRuleDefinition(f"Not a valid HTTP method '{http_method}'", counter, definition)
-
-            try:
-                conditions = definition["conditions"]
-            except KeyError:
-                raise InvalidRuleDefinition("Missing conditions or options", counter, definition)
-
-            if len(conditions) > 1:
-                try:
-                    checker = AllOf(conditions)
-                except KeyError as exc:
-                    message = f"Missing option {exc}."
-                    raise InvalidRuleDefinition(message, counter, definition)
-                except AssertionError as exc:
-                    message = str(exc)
-                    raise InvalidRuleDefinition(message, counter, definition)
-            else:
-                # loop will only run once
-                for name, options in conditions.items():
-                    try:
-                        checker = AbstractCondition.concrete_condition(name, options)
-                    except KeyError as exc:
-                        message = f"Missing option {exc}."
-                        raise InvalidRuleDefinition(message, counter, definition)
-                    except AssertionError as exc:
-                        message = str(exc)
-                        raise InvalidRuleDefinition(message, counter, definition)
-
-            self.rules.append((endpoint, http_methods, checker))
-
-    def is_allowed(self, current_user: Union[UserAttributes, Dict[str, Any]], current_request: Any) -> None:
-        if not self.rules:
-            raise Forbidden(str("No security rules found"))
-
-        if isinstance(current_user, UserAttributes):
-            user_attributes = current_user
-        else:
-            user_attributes = UserAttributes(current_user)
-
-        endpoint = current_request.endpoint or current_request.base_url
-        method = current_request.method
-
-        matches = []
-
-        for endpoint_pattern, http_methods, checker in self.rules:
-            if fnmatch.fnmatch(endpoint, endpoint_pattern):
-                if "*" in http_methods or method in http_methods:
-                    matches.append(checker)
-
-        if len(matches) > 1:
-            if True in (c.test(user_attributes, current_request) for c in matches):
-                return
-            else:
-                raise Forbidden("\n".join(str(c) for c in matches))
-        elif len(matches) == 1:
-            checker = matches[0]
-            if checker.test(user_attributes, current_request):
-                return
-            else:
-                raise Forbidden(str(checker))
-        else:
-            raise Forbidden(f"No rules matched endpoint {endpoint} and HTTP method {method}")
