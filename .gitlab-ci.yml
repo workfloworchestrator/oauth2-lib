@@ -3,7 +3,7 @@ stages:
   - test
 
 testing:
-  image: python:3.8
+  image: git.ia.surfsara.nl/automation/dependency_proxy/containers/python:3.8
   stage: test
   script:
     - pip install .[test]
