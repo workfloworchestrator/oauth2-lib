@@ -1,10 +1,25 @@
+# Copyright 2019-2020 SURF.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import re
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional, Set
+from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional, Set, cast
 
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPBearer
+from fastapi.exceptions import HTTPException
+from fastapi.param_functions import Depends
+from fastapi.requests import Request
+from fastapi.security.http import HTTPBearer
 from httpx import AsyncClient, BasicAuth, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect
@@ -58,9 +73,9 @@ class OIDCUserModel(dict):
     @property
     def user_name(self) -> str:
         if "user_name" in self.keys():
-            return self["user_name"]
+            return cast(str, self["user_name"])
         elif "unspecified_id" in self.keys():
-            return self["unspecified_id"]
+            return cast(str, self["unspecified_id"])
         else:
             return ""
 
@@ -133,7 +148,6 @@ class OIDCConfig(BaseModel):
     claims_supported: List[str]
     claims_parameter_supported: bool
     request_parameter_supported: bool
-    acr_values_supported: List[str]
     code_challenge_methods_supported: List[str]
 
 
@@ -173,7 +187,7 @@ class OIDCUser(HTTPBearer):
         self.enabled = enabled
         self.scheme_name = scheme_name or self.__class__.__name__
 
-    async def __call__(  # type:ignore
+    async def __call__(  # type: ignore
         self, request: Request, async_client: AsyncClient = Depends(async_client)
     ) -> Optional[OIDCUserModel]:
         """

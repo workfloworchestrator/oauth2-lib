@@ -1,3 +1,16 @@
+# Copyright 2019-2020 SURF.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from asyncio import new_event_loop
 from http import HTTPStatus
 from typing import Any, Dict, Optional
@@ -50,6 +63,8 @@ class AsyncAuthMixin:
         foo = await BlaApi(fac).get_foo_by_id(foo_id)
 
     """
+
+    _token: Optional[Dict]
 
     def __init__(
         self,
@@ -105,7 +120,7 @@ class AsyncAuthMixin:
         else:
             self._token = await self._oauth_client.fetch_access_token()
 
-    def request(
+    def request(  # type:ignore
         self,
         method,
         url,
@@ -127,16 +142,16 @@ class AsyncAuthMixin:
 
         try:
             self.add_client_creds_token_header(headers)
-            return super().request(
+            return super().request(  # type:ignore
                 method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
             )
         except Exception as ex:
-            if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
+            if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):  # type:ignore
                 logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
                 loop = new_event_loop()
                 loop.run_until_complete(self.refresh_client_creds_token(force=True))
                 self.add_client_creds_token_header(headers)
-                return super().request(
+                return super().request(  # type:ignore
                     method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
                 )
 

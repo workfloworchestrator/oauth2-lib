@@ -1,7 +1,9 @@
+from typing import cast
 from unittest import mock
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi.exceptions import HTTPException
+from fastapi.requests import Request
 from httpx import AsyncClient, BasicAuth, Response
 
 from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel, opa_decision
@@ -64,18 +66,13 @@ discovery = {
     ],
     "claims_parameter_supported": True,
     "request_parameter_supported": True,
-    "acr_values_supported": [
-        "http://test.surfconext.nl/assurance/loa1",
-        "http://test.surfconext.nl/assurance/loa2",
-        "http://test.surfconext.nl/assurance/loa3",
-    ],
     "code_challenge_methods_supported": ["plain", "S256"],
 }
 
 
 user_info = {"active": True, "uids": ["boers"], "updated_at": 1582810910, "scope": "openid test:scope", "sub": "hoi"}
 
-user_info_matching = {
+user_info_matching: OIDCUserModel = {  # type:ignore
     "active": True,
     "edumember_is_member_of": ["urn:collab:org:surf.nl"],
     "eduperson_entitlement": ["urn:mace:surfnet.nl:surfnet.nl:sab:role:role0"],
@@ -158,23 +155,18 @@ id_token = (
 @pytest.fixture(scope="session")
 def make_mock_async_client():
     def _make_mock_async_client(json=None, error=None):
-        mock_async_client = mock.MagicMock(spec=AsyncClient)
+        mock_async_client = mock.AsyncMock(spec=AsyncClient)
 
         if error:
-
-            async def mock_request(*args, **kwargs):
-                raise error
-
+            mock_async_client.get.side_effect = error
+            mock_async_client.post.side_effect = error
         else:
+            mock_response = mock.MagicMock(spec=Response)
+            mock_response.json.return_value = json
+            mock_response.status_code = 200
 
-            async def mock_request(*args, **kwargs):
-                mock_response = mock.MagicMock(spec=Response)
-                mock_response.json.return_value = json
-                mock_response.status_code = 200
-                return mock_response
-
-        mock_async_client.get.side_effect = mock_request
-        mock_async_client.post.side_effect = mock_request
+            mock_async_client.get.side_effect = [mock_response]
+            mock_async_client.post.side_effect = [mock_response]
 
         return mock_async_client
 
@@ -260,7 +252,7 @@ async def test_OIDCUser():
 
     openid_bearer = OIDCUser("openid_url", "id", "secret")
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
     result = await openid_bearer(mock_request)
 
@@ -291,7 +283,7 @@ async def test_OIDCUser_invalid():
 
     openid_bearer = OIDCUser("openid_url", "id", "secret")
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
     with pytest.raises(HTTPException) as exception:
         await openid_bearer(mock_request)
@@ -309,9 +301,9 @@ async def test_OIDCUser_no_creds_no_error():
 
     openid_bearer = OIDCUser("openid_url", "id", "secret", auto_error=False)
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
-    result = await openid_bearer(mock_request, None)
+    result = await openid_bearer(mock_request, None)  # type:ignore
 
     assert result is None
 
@@ -326,7 +318,7 @@ async def test_OIDCUser_disabled():
 
     openid_bearer = OIDCUser("openid_url", "id", "secret", enabled=False)
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
     result = await openid_bearer(mock_request)
 
@@ -338,11 +330,11 @@ async def test_opa_decision_auto_error():
     def mock_user_info():
         return {}
 
-    opa_decision_security = opa_decision("https://opa_url.test", mock_user_info, enabled=False)
+    opa_decision_security = opa_decision("https://opa_url.test", cast(OIDCUser, mock_user_info), enabled=False)
 
     mock_request = mock.MagicMock(spec=Request)
 
-    assert await opa_decision_security(mock_request, {}) is None
+    assert await opa_decision_security(mock_request, {}, None) is None  # type:ignore
 
 
 @pytest.fixture
@@ -351,6 +343,7 @@ def mock_request():
     mock_request.url.path = "/test/path"
     mock_request.method = "GET"
     mock_request.path_params = {}
+    mock_request.json.return_value = {}
     return mock_request
 
 
@@ -358,7 +351,7 @@ def mock_request():
 async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
 
-    opa_decision_security = opa_decision("https://opa_url.test", None)
+    opa_decision_security = opa_decision("https://opa_url.test", None)  # type:ignore
 
     with pytest.raises(HTTPException) as exception:
         await opa_decision_security(mock_request, user_info_matching, mock_async_client)
@@ -390,7 +383,7 @@ async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_reques
 async def test_opa_decision_network_or_type_error(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client(error=TypeError())
 
-    opa_decision_security = opa_decision("https://opa_url.test", None)
+    opa_decision_security = opa_decision("https://opa_url.test", None)  # type:ignore
 
     with pytest.raises(HTTPException) as exception:
         await opa_decision_security(mock_request, user_info_matching, mock_async_client)
@@ -402,7 +395,7 @@ async def test_opa_decision_network_or_type_error(make_mock_async_client, mock_r
 async def test_opa_decision_user_allowed(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
 
-    opa_decision_security = opa_decision("https://opa_url.test", None)
+    opa_decision_security = opa_decision("https://opa_url.test", None)  # type:ignore
 
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
@@ -422,7 +415,7 @@ async def test_opa_decision_user_allowed(make_mock_async_client, mock_request):
 async def test_opa_decision_kwargs(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
 
-    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3})
+    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3})  # type:ignore
 
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
@@ -443,7 +436,9 @@ async def test_opa_decision_kwargs(make_mock_async_client, mock_request):
 async def test_opa_decision_auto_error_not_allowed(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
 
-    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False)
+    opa_decision_security = opa_decision(
+        "https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False  # type:ignore
+    )
 
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
@@ -464,7 +459,9 @@ async def test_opa_decision_auto_error_not_allowed(make_mock_async_client, mock_
 async def test_opa_decision_auto_error_allowed(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
 
-    opa_decision_security = opa_decision("https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False)
+    opa_decision_security = opa_decision(
+        "https://opa_url.test", None, opa_kwargs={"extra": 3}, auto_error=False  # type:ignore
+    )
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
 
     assert result is True

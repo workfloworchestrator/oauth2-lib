@@ -4,24 +4,28 @@ from setuptools import find_packages, setup
 from setuptools.command.test import test as TestCommand
 
 test_requirements = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "flake8",
+    "apache-license-check",
     "black",
-    "isort",
+    "flake8",
     "flake8-bandit",
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-docstrings",
+    "flake8-junit-report",
     "flake8-logging-format",
     "flake8-pep3101",
     "flake8-print",
-    "pydocstyle==3.0.0",
+    "flake8-rst",
+    "flake8-rst-docstrings",
+    "flake8-tidy-imports",
+    "isort",
     "mypy",
-    "mypy_extensions",
+    "pygments",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-xdist",
     "requests_mock",
-    "flask_testing",
     "pre-commit",
 ]
 
@@ -29,16 +33,16 @@ test_requirements = [
 class PyTest(TestCommand):
     user_options = [("pytest-args=", "a", "Arguments to pass into py.test")]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         TestCommand.initialize_options(self)
-        self.pytest_args = []
+        self.pytest_args = []  # type:ignore
 
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         TestCommand.finalize_options(self)
-        self.test_args = []
+        self.test_args = []  # type:ignore
         self.test_suite = True
 
-    def run_tests(self):
+    def run_tests(self) -> None:
         import pytest
 
         errno = pytest.main(self.pytest_args)
@@ -47,7 +51,7 @@ class PyTest(TestCommand):
 
 setup(
     name="oauth2-lib",
-    version="1.0.16",
+    version="1.0.17",
     packages=find_packages(),
     cmdclass={"test": PyTest},
     url="https://gitlab.surfnet.nl/automation/oauth2-lib",
@@ -57,11 +61,10 @@ setup(
     author_email="automation-nw@surfnet.nl",
     description="OAUTH2 lib specific for SURFnet",
     install_requires=[
-        "flask>=1.0.4",
         "requests>=2.19.0",
         "ruamel.yaml~=0.16.10",
         "structlog~=20.1.0",
-        "fastapi>=0.54.1",
+        "fastapi>=0.61.2",
         "httpx~=0.16.1",
         "authlib==0.15.2",
         "pydantic",
