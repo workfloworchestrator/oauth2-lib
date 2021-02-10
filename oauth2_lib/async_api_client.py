@@ -10,15 +10,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from asyncio import new_event_loop
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-import opentracing
 import structlog
 from authlib.integrations.base_client import BaseOAuth, RemoteApp
-from opentracing.propagation import Format
 
 logger = structlog.get_logger(__name__)
 
@@ -71,7 +68,6 @@ class AsyncAuthMixin:
         oauth_client: BaseOAuth,
         oauth_client_name: str,
         oauth_active: bool,
-        tracing_enabled: bool = False,
         *args: Any,
         **kwargs: Any,
     ):
@@ -79,7 +75,6 @@ class AsyncAuthMixin:
         self._oauth_client: RemoteApp = getattr(oauth_client, oauth_client_name)
         self._oauth_active = oauth_active
         self._token = None
-        self._tracing_enabled = tracing_enabled
 
     def add_client_creds_token_header(self, headers: Optional[Dict[str, Any]]) -> None:
         """Add header with credentials to an existing set of headers.
@@ -131,14 +126,6 @@ class AsyncAuthMixin:
         _preload_content=True,
         _request_timeout=None,
     ):
-        if self._tracing_enabled:
-            tracer = opentracing.global_tracer()
-            span = tracer.active_span
-            if span is None:
-                span = tracer.start_span(operation_name=url, tags={"http.url": url, "http.method": method})
-                opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
-            else:
-                opentracing.tracer.inject(span, Format.HTTP_HEADERS, headers)
 
         try:
             self.add_client_creds_token_header(headers)
