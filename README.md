@@ -26,3 +26,7 @@ With this way all requirements are installed for testing and development.
 
 ## Development
 Don't forget to update the version number in setup.py before each update to master branch
+
+
+## For MAC users looking and experimenting with Opentelemetry (OTEL)
+https://github.com/jaegertracing/jaeger-client-node/issues/124#issuecomment-324222456
