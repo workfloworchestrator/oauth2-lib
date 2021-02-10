@@ -13,6 +13,6 @@ testing:
     - flake8 --tee --output-file flake8.txt
     - flake8_junit flake8.txt report-flake8.xml
     - mypy . --junit-xml report-mypy.xml
-    - pytest -vvv --cov-branch --cov-fail-under=68 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest.xml
+    - pytest -vvv --cov-branch --cov-fail-under=61 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest.xml
   tags:
     - python-lint-ext
