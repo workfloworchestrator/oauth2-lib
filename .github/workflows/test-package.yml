@@ -40,4 +40,11 @@ jobs:
         apache-license-check --copyright "2019-2020 SURF" oauth2_lib
     - name: Test with pytest
       run: |
-        - pytest -vvv --cov-branch --cov-fail-under=61 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest.xml
+        pytest -vvv --cov-branch --cov-fail-under=61 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest-${{ matrix.python-version }}.xml
+    - name: Upload pytest test results
+      uses: actions/upload-artifact@v2
+      with:
+        name: pytest-results-${{ matrix.python-version }}
+        path: report-pytest-${{ matrix.python-version }}.xml
+      # Use always() to always run this step to publish test results when there are test failures
+      if: ${{ always() }}
