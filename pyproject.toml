@@ -1,3 +1,81 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+module = "oauth2_lib"
+dist-name = "oauth2-lib"
+author = "SURF"
+author-email = "automation-beheer@surf.nl"
+home-page = "https://github.com/workfloworchestrator/oauth2-lib"
+classifiers = [
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Typing :: Typed",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+]
+requires = [
+    "requests>=2.19.0",
+    "ruamel.yaml~=0.16.10",
+    "structlog>=20.2.0",
+    "fastapi>=0.61.2",
+    "httpx~=0.16.1",
+    "authlib>=0.15.2",
+    "pydantic",
+    "opentelemetry-api~=0.17b0",
+    "opentelemetry-instrumentation~=0.17b0",
+]
+description-file = "README.md"
+requires-python = ">3.6,<3.9"
+
+[tool.flit.metadata.urls]
+Documentation = "https://workfloworchestrator.org/"
+
+[tool.flit.metadata.requires-extra]
+test = [
+    "apache-license-check",
+    "black",
+    "flake8",
+    "flake8-bandit",
+    "flake8-bugbear",
+    "flake8-comprehensions",
+    "flake8-docstrings",
+    "flake8-junit-report",
+    "flake8-logging-format",
+    "flake8-pep3101",
+    "flake8-print",
+    "flake8-rst",
+    "flake8-rst-docstrings",
+    "flake8-tidy-imports",
+    "isort",
+    "mypy",
+    "pygments",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-xdist",
+    "requests_mock",
+]
+dev = [
+    "bumpversion",
+    "pre-commit",
+]
+
 [tool.isort]
 profile="black"
 line_length = 120

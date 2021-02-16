@@ -1,32 +1,30 @@
 # OAuth2-lib
-This project contains the SURFnet implementation of an OAuth2 filter.
-The `oauth2_lib` module contains a number of classes that either filter an incoming OAuth2 response
-or define Roles, Teams and Scopes.
+This Project contains an Mixin class that wraps an openapi-codegen python client, to inject Opentelemetry spans
+and api call retries. It also contains a number of FastAPI dependancies which enables Policy enforcement offloading
+to Open Policy Agent.
 
-## Rules
-Rules can be defined by using a set of conditions. The conditions are AnyOf or AllOf. Meaning that rules defined within
-these context will be enforced that way.
+The project contains a number of OIDC classes that are tailored to the SURF environment.
 
-An example of how this is implemented can be found:
-
-* [Workflows main.py](https://gitlab.surfnet.nl/automation/workflows/blob/dev/server/main.py#L223)
-
-An example of a complex set of conditions may be found here:
-
-* [Networkdashboard-api](https://gitlab.surfnet.nl/automation/netwerkdashboard-api/blob/dev/server/api/security_definitions.yaml)
 
 ## Installation
 This can be done as follows:
 
+#### Step 1:
+First install flit to enable you to develop on this repository
 ```bash
-python setup.py install test
+pip install flit
+```
+#### Step 2:
+
+To install all development dependancies
+```bash
+flit install --deps develop --symlink
 ```
 
 With this way all requirements are installed for testing and development.
 
 ## Development
-Don't forget to update the version number in setup.py before each update to master branch
-
+Depending on the feature type, run bumpversion (patch|minor|major) to increment the version you are working on
 
 ## For MAC users looking and experimenting with Opentelemetry (OTEL)
 https://github.com/jaegertracing/jaeger-client-node/issues/124#issuecomment-324222456
