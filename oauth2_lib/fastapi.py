@@ -211,7 +211,7 @@ class OIDCUser(HTTPBearer):
                 user_info = await self.introspect_token(async_client, credentials.credentials)
 
                 if not user_info.get("active", False):
-                    logger.debug("Token is invalid")
+                    logger.warning("Token is invalid")
                     raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Access token is invalid")
 
                 logger.debug("OIDCUserModel object.", user_info=user_info)
@@ -251,12 +251,12 @@ class OIDCUser(HTTPBearer):
         try:
             data = dict(response.json())
         except JSONDecodeError:
-            logger.debug("Unable to parse introspect response")
+            logger.warning("Unable to parse introspect response", detail=response.text)
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
         logger.debug("Response from openid introspect", response=data)
 
         if response.status_code not in range(200, 300):
-            logger.debug("Introspect cannot find an active token, user unauthorized")
+            logger.warning("Introspect cannot find an active token, user unauthorized", detail=response.text)
 
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
 
@@ -315,7 +315,7 @@ def opa_decision(
             data = OPAResult.parse_obj(result.json())
 
             if not data.result and auto_error:
-                logger.debug(
+                logger.warning(
                     "User is not allowed to access the resource",
                     decision_id=data.decision_id,
                     resource=request.url.path,
