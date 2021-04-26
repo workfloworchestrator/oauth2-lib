@@ -315,7 +315,7 @@ def opa_decision(
             data = OPAResult.parse_obj(result.json())
 
             if not data.result and auto_error:
-                logger.debug(
+                logger.warning(
                     "User is not allowed to access the resource",
                     decision_id=data.decision_id,
                     resource=request.url.path,
