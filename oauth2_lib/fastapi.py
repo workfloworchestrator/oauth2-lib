@@ -211,7 +211,7 @@ class OIDCUser(HTTPBearer):
                 user_info = await self.introspect_token(async_client, credentials.credentials)
 
                 if not user_info.get("active", False):
-                    logger.warning("Token is invalid")
+                    logger.error("Token is invalid", url=request.url, user_info=user_info)
                     raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Access token is invalid")
 
                 logger.debug("OIDCUserModel object.", user_info=user_info)
@@ -251,13 +251,22 @@ class OIDCUser(HTTPBearer):
         try:
             data = dict(response.json())
         except JSONDecodeError:
-            logger.warning("Unable to parse introspect response", detail=response.text)
+            logger.error(
+                "Unable to parse introspect response",
+                detail=response.text,
+                resource_server_id=self.resource_server_id,
+                openid_url=self.openid_url,
+            )
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
         logger.debug("Response from openid introspect", response=data)
 
         if response.status_code not in range(200, 300):
-            logger.warning("Introspect cannot find an active token, user unauthorized", detail=response.text)
-
+            logger.error(
+                "Introspect cannot find an active token, user unauthorized",
+                detail=response.text,
+                resource_server_id=self.resource_server_id,
+                openid_url=self.openid_url,
+            )
             raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
 
         return OIDCUserModel(data)
@@ -290,7 +299,7 @@ def opa_decision(
             try:
                 json = await request.json()
             # Silencing the Decode error or Type error when request.json() does not return anything sane.
-            # Some requests do not have a json respone therefore as this code gets called on every request
+            # Some requests do not have a json response therefore as this code gets called on every request
             # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
             except (JSONDecodeError, TypeError, ClientDisconnect):
                 json = {}
@@ -315,13 +324,14 @@ def opa_decision(
             data = OPAResult.parse_obj(result.json())
 
             if not data.result and auto_error:
-                logger.warning(
+                logger.error(
                     "User is not allowed to access the resource",
                     decision_id=data.decision_id,
                     resource=request.url.path,
                     method=request.method,
                     user_info=user_info,
                     input=opa_input,
+                    url=request.url,
                 )
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
