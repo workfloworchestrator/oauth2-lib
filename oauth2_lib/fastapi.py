@@ -124,6 +124,10 @@ class OIDCUserModel(dict):
             return set(self.get("scope"))  # type: ignore
         return set(re.split("[ ,]", self.get("scope", "")))
 
+    @property
+    def is_resource_server(self) -> bool:
+        return self.get("is_resource_server", False)
+
 
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient() as client:
