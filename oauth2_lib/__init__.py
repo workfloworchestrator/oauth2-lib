@@ -13,4 +13,5 @@
 
 """This is the SURF Oauth2 module that interfaces with the oauth2 setup."""
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
+
