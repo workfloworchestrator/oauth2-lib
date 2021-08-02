@@ -31,7 +31,7 @@ requires = [
     "requests>=2.19.0",
     "ruamel.yaml~=0.16.10",
     "structlog>=20.2.0",
-    "fastapi~=0.65.1",
+    "fastapi>=0.65.1",
     "httpx~=0.18.2",
     "authlib>=0.15.2",
     "pydantic",
