@@ -300,6 +300,7 @@ def opa_decision(
         Args:
             request: Request object that will be used to retrieve request metadata.
             user_info: The OIDCUserModel object that will be checked
+            async_request: The httpx client.
         """
 
         if enabled:
@@ -308,15 +309,18 @@ def opa_decision(
             # Silencing the Decode error or Type error when request.json() does not return anything sane.
             # Some requests do not have a json response therefore as this code gets called on every request
             # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
-            except (JSONDecodeError, TypeError, ClientDisconnect):
+            # Suppress AttributeError in case of websocket request, it doesn't have .json
+            except (JSONDecodeError, TypeError, ClientDisconnect, AttributeError):
                 json = {}
 
+            # defaulting to GET request method for WebSocket request, it doesn't have .method
+            requestMethod = request.method if hasattr(request, 'method') else "GET"
             opa_input = {
                 "input": {
                     **(opa_kwargs or {}),
                     **user_info,
                     "resource": request.url.path,
-                    "method": request.method,
+                    "method": requestMethod,
                     "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
                 }
             }
@@ -335,7 +339,7 @@ def opa_decision(
                     "User is not allowed to access the resource",
                     decision_id=data.decision_id,
                     resource=request.url.path,
-                    method=request.method,
+                    method=requestMethod,
                     user_info=user_info,
                     input=opa_input,
                     url=request.url,
@@ -350,7 +354,7 @@ def opa_decision(
                         "User is authorized to access the resource",
                         decision_id=data.decision_id,
                         resource=request.url.path,
-                        method=request.method,
+                        method=requestMethod,
                         user_info=user_info,
                         input=opa_input,
                     )
