@@ -260,6 +260,24 @@ async def test_OIDCUser():
 
 
 @pytest.mark.asyncio
+async def test_OIDCUser_with_token():
+
+    mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {"Authorization": "Bearer creds"}
+
+    async def mock_introspect_token(client, token):
+        return user_info_matching
+
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
+
+    result = await openid_bearer(mock_request, token="creds")
+
+    assert result == user_info_matching
+
+
+@pytest.mark.asyncio
 async def test_OIDCUser_incompatible_schema():
     mock_request = mock.MagicMock(spec=Request)
     mock_request.headers = {"Authorization": "basic creds"}
