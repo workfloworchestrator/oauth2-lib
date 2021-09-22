@@ -191,7 +191,7 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(  # type: ignore
-        self, request: Request, async_client: AsyncClient = Depends(async_client)
+        self, request: Request, async_client: AsyncClient = Depends(async_client), token: Optional[str] = None
     ) -> Optional[OIDCUserModel]:
         """
         Return the OIDC user from OIDC introspect endpoint.
@@ -200,19 +200,22 @@ class OIDCUser(HTTPBearer):
 
         Args:
             request: Starlette request method.
-            async_client: The httpx client
+            async_client: The httpx client.
+            token: Optional value to directly pass a token.
 
         Returns:
             OIDCUserModel object.
 
         """
         if self.enabled:
-
             await self.check_openid_config(async_client)
 
-            credentials = await super().__call__(request)
-            if credentials:
-                user_info = await self.introspect_token(async_client, credentials.credentials)
+            if not token:
+                credentials = await super().__call__(request)
+                token = credentials.credentials if credentials else None
+
+            if token:
+                user_info = await self.introspect_token(async_client, token)
 
                 if not user_info.get("active", False):
                     logger.debug("Token is invalid", url=request.url, user_info=user_info)
