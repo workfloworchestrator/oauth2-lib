@@ -273,7 +273,7 @@ async def test_OIDCUser_with_token():
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
     openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
-    result = await openid_bearer(mock_request, token="creds")
+    result = await openid_bearer(mock_request, token="creds")  # noqa: S106
 
     assert result == user_info_matching
 

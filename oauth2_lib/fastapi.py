@@ -314,7 +314,7 @@ def opa_decision(
                 json = {}
 
             # defaulting to GET request method for WebSocket request, it doesn't have .method
-            requestMethod = request.method if hasattr(request, 'method') else "GET"
+            requestMethod = request.method if hasattr(request, "method") else "GET"
             opa_input = {
                 "input": {
                     **(opa_kwargs or {}),
