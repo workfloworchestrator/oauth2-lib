@@ -191,7 +191,7 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(  # type: ignore
-        self, request: Request, async_client: AsyncClient = Depends(async_client)
+        self, request: Request, async_request: AsyncClient = Depends(async_client), token: Optional[str] = None
     ) -> Optional[OIDCUserModel]:
         """
         Return the OIDC user from OIDC introspect endpoint.
@@ -200,19 +200,22 @@ class OIDCUser(HTTPBearer):
 
         Args:
             request: Starlette request method.
-            async_client: The httpx client
+            async_request: The httpx client.
+            token: Optional value to directly pass a token.
 
         Returns:
             OIDCUserModel object.
 
         """
         if self.enabled:
+            await self.check_openid_config(async_request)
 
-            await self.check_openid_config(async_client)
+            if not token:
+                credentials = await super().__call__(request)
+                token = credentials.credentials if credentials else None
 
-            credentials = await super().__call__(request)
-            if credentials:
-                user_info = await self.introspect_token(async_client, credentials.credentials)
+            if token:
+                user_info = await self.introspect_token(async_request, token)
 
                 if not user_info.get("active", False):
                     logger.debug("Token is invalid", url=request.url, user_info=user_info)
@@ -223,15 +226,15 @@ class OIDCUser(HTTPBearer):
 
         return None
 
-    async def check_openid_config(self, async_client: AsyncClient) -> None:
+    async def check_openid_config(self, async_request: AsyncClient) -> None:
         """Check of openid config is loaded and load if not."""
         if self.openid_config is not None:
             return
 
-        response = await async_client.get(self.openid_url + "/.well-known/openid-configuration")
+        response = await async_request.get(self.openid_url + "/.well-known/openid-configuration")
         self.openid_config = OIDCConfig.parse_obj(response.json())
 
-    async def introspect_token(self, async_client: AsyncClient, token: str) -> OIDCUserModel:
+    async def introspect_token(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
         """
         Introspect the access token to retrieve the user info.
 
@@ -242,10 +245,10 @@ class OIDCUser(HTTPBearer):
             OIDCUserModel from openid server
 
         """
-        await self.check_openid_config(async_client)
+        await self.check_openid_config(async_request)
         assert self.openid_config
 
-        response = await async_client.post(
+        response = await async_request.post(
             self.openid_config.introspect_endpoint,
             params={"token": token},
             auth=BasicAuth(self.resource_server_id, self.resource_server_secret),
@@ -297,6 +300,7 @@ def opa_decision(
         Args:
             request: Request object that will be used to retrieve request metadata.
             user_info: The OIDCUserModel object that will be checked
+            async_request: The httpx client.
         """
 
         if enabled:
@@ -305,15 +309,18 @@ def opa_decision(
             # Silencing the Decode error or Type error when request.json() does not return anything sane.
             # Some requests do not have a json response therefore as this code gets called on every request
             # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
-            except (JSONDecodeError, TypeError, ClientDisconnect):
+            # Suppress AttributeError in case of websocket request, it doesn't have .json
+            except (JSONDecodeError, TypeError, ClientDisconnect, AttributeError):
                 json = {}
 
+            # defaulting to GET request method for WebSocket request, it doesn't have .method
+            requestMethod = request.method if hasattr(request, 'method') else "GET"
             opa_input = {
                 "input": {
                     **(opa_kwargs or {}),
                     **user_info,
                     "resource": request.url.path,
-                    "method": request.method,
+                    "method": requestMethod,
                     "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
                 }
             }
@@ -332,7 +339,7 @@ def opa_decision(
                     "User is not allowed to access the resource",
                     decision_id=data.decision_id,
                     resource=request.url.path,
-                    method=request.method,
+                    method=requestMethod,
                     user_info=user_info,
                     input=opa_input,
                     url=request.url,
@@ -347,7 +354,7 @@ def opa_decision(
                         "User is authorized to access the resource",
                         decision_id=data.decision_id,
                         resource=request.url.path,
-                        method=request.method,
+                        method=requestMethod,
                         user_info=user_info,
                         input=opa_input,
                     )

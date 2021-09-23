@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 from fastapi.exceptions import HTTPException
 from fastapi.requests import Request
+from fastapi.websockets import WebSocket
 from httpx import AsyncClient, BasicAuth, Response
 
 from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel, opa_decision
@@ -260,6 +261,24 @@ async def test_OIDCUser():
 
 
 @pytest.mark.asyncio
+async def test_OIDCUser_with_token():
+
+    mock_request = mock.MagicMock(spec=Request)
+    mock_request.headers = {"Authorization": "Bearer creds"}
+
+    async def mock_introspect_token(client, token):
+        return user_info_matching
+
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
+    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
+
+    result = await openid_bearer(mock_request, token="creds")
+
+    assert result == user_info_matching
+
+
+@pytest.mark.asyncio
 async def test_OIDCUser_incompatible_schema():
     mock_request = mock.MagicMock(spec=Request)
     mock_request.headers = {"Authorization": "basic creds"}
@@ -347,6 +366,14 @@ def mock_request():
     return mock_request
 
 
+@pytest.fixture
+def mock_websocket_request():
+    mock_request = mock.MagicMock(spec=WebSocket)
+    mock_request.url.path = "/test/path"
+    mock_request.path_params = {}
+    return mock_request
+
+
 @pytest.mark.asyncio
 async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
@@ -398,6 +425,26 @@ async def test_opa_decision_user_allowed(make_mock_async_client, mock_request):
     opa_decision_security = opa_decision("https://opa_url.test", None)  # type:ignore
 
     result = await opa_decision_security(mock_request, user_info_matching, mock_async_client)
+
+    assert result is True
+    opa_input = {
+        "input": {
+            **user_info_matching,
+            "resource": "/test/path",
+            "method": "GET",
+            "arguments": {"path": {}, "query": {}, "json": {}},
+        }
+    }
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+@pytest.mark.asyncio
+async def test_opa_decision_user_allowed_websocket_request(make_mock_async_client, mock_websocket_request):
+    mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
+
+    opa_decision_security = opa_decision("https://opa_url.test", None)  # type:ignore
+
+    result = await opa_decision_security(mock_websocket_request, user_info_matching, mock_async_client)
 
     assert result is True
     opa_input = {
