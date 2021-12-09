@@ -1,0 +1,10 @@
+authlib>=0.15.2
+fastapi>=0.65.1
+httpx~=0.18.1
+more-itertools~=8.7.0
+opentelemetry-api~=1.4.1
+opentelemetry-instrumentation~=0.23b2
+pydantic
+requests>=2.19.0
+ruamel.yaml~=0.16.10
+structlog~=20.2.0

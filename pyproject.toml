@@ -80,7 +80,7 @@ skip = ["src", "venv"]
 
 [tool.black]
 line-length = 120
-target-version = ["py38"]
+target-version = ["py39"]
 exclude = '''
 (
   /(
@@ -95,3 +95,7 @@ exclude = '''
   )/
 )
 '''
+
+
+[tool.nitpick]
+style="github://workfloworchestrator/nitpick-style@main/nitpick-style.toml"
