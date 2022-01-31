@@ -13,7 +13,7 @@
 import contextlib
 from asyncio import new_event_loop
 from http import HTTPStatus
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Generator, Optional
 
 import structlog
 import urllib3
@@ -92,7 +92,7 @@ class AsyncAuthMixin:
 
     """
 
-    _token: Optional[Dict]
+    _token: Optional[dict]
 
     def __init__(
         self,
@@ -103,13 +103,13 @@ class AsyncAuthMixin:
         *args: Any,
         **kwargs: Any,
     ):
-        super().__init__(*args, **kwargs)  # type:ignore
+        super().__init__(*args, **kwargs)
         self._oauth_client: RemoteApp = getattr(oauth_client, oauth_client_name)
         self._oauth_active = oauth_active
         self._tracing_enabled = tracing_enabled
         self._token = None
 
-    def add_client_creds_token_header(self, headers: Dict[str, Any]) -> None:
+    def add_client_creds_token_header(self, headers: dict[str, Any]) -> None:
         """Add header with credentials to an existing set of headers.
 
         This function assumes the `access_token` has been set in the application configuration
