@@ -36,9 +36,9 @@ requires = [
     "fastapi>=0.65.1",
     "httpx~=0.18.1",
     "authlib>=0.15.2",
-    "pydantic",
-    "opentelemetry-api~=1.4.1",
-    "opentelemetry-instrumentation~=0.23b2",
+    "pydantic>=1.8.0",
+    "opentelemetry-api~=1.9.1",
+    "opentelemetry-instrumentation~=0.29b1",
 ]
 description-file = "README.md"
 requires-python = ">3.8"
