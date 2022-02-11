@@ -21,7 +21,7 @@ jobs:
         if: ${{ steps.week-modulo.outputs.should_cancel == '1' }}
 
   run_build:
-    uses: ./.github/workflows/test-package.yaml
+    uses: ./.github/workflows/test-package.yml
     needs: [check_week]
 
   slack:
