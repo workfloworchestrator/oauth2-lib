@@ -5,13 +5,14 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_call:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10.0]
+        python-version: [3.9, 3.10.1]
 
     steps:
       - uses: actions/checkout@v2
