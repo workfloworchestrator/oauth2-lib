@@ -1,5 +1,6 @@
 -r base.txt
 apache-license-check
+bandit==1.7.2  # until new flake8-bandit release for https://github.com/tylerwince/flake8-bandit/issues/21
 black
 flake8
 flake8-bandit
