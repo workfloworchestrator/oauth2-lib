@@ -2,7 +2,6 @@ name: Test python package
 
 on:
   push:
-    branches: [master]
   pull_request:
     branches: [master]
   workflow_call:
@@ -12,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10.1]
+        python-version: [3.9, 3.10]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
@@ -37,7 +37,7 @@ jobs:
           mypy -p oauth2_lib
       - name: License headers
         run: |
-          apache-license-check --copyright "2019-2020 SURF" oauth2_lib
+          apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
       - name: Test with pytest
         run: |
           pytest -vvv --cov-branch --cov-fail-under=61 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest-${{ matrix.python-version }}.xml
