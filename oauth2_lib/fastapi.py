@@ -13,7 +13,7 @@
 import re
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Callable, Coroutine, Mapping, Optional, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Mapping, cast
 
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import Depends
@@ -168,7 +168,7 @@ class OIDCUser(HTTPBearer):
         2. When receiving an active token it will enrich the response through the database roles
     """
 
-    openid_config: Optional[OIDCConfig] = None
+    openid_config: OIDCConfig | None = None
     openid_url: str
     resource_server_id: str
     resource_server_secret: str
@@ -181,7 +181,7 @@ class OIDCUser(HTTPBearer):
         resource_server_secret: str,
         enabled: bool = True,
         auto_error: bool = True,
-        scheme_name: Optional[str] = None,
+        scheme_name: str | None = None,
     ):
         super().__init__(auto_error=auto_error)
         self.openid_url = openid_url
@@ -191,8 +191,8 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(  # type: ignore
-        self, request: Request, async_request: AsyncClient = Depends(async_client), token: Optional[str] = None
-    ) -> Optional[OIDCUserModel]:
+        self, request: Request, async_request: AsyncClient = Depends(async_client), token: str | None = None
+    ) -> OIDCUserModel | None:
         """
         Return the OIDC user from OIDC introspect endpoint.
 
@@ -284,13 +284,13 @@ def opa_decision(
     oidc_security: OIDCUser,
     enabled: bool = True,
     auto_error: bool = True,
-    opa_kwargs: Optional[Mapping[str, str]] = None,
-) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, Optional[bool]]]:
+    opa_kwargs: Mapping[str, str] | None = None,
+) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, bool | None]]:
     async def _opa_decision(
         request: Request,
         user_info: OIDCUserModel = Depends(oidc_security),
         async_request: AsyncClient = Depends(async_client),
-    ) -> Optional[bool]:
+    ) -> bool | None:
         """
         Check OIDCUserModel against the OPA policy.
 

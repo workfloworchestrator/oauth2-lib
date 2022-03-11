@@ -13,7 +13,7 @@
 import contextlib
 from asyncio import new_event_loop
 from http import HTTPStatus
-from typing import Any, Generator, Optional
+from typing import Any, Generator
 
 import structlog
 import urllib3
@@ -92,7 +92,7 @@ class AsyncAuthMixin:
 
     """
 
-    _token: Optional[dict]
+    _token: dict | None
 
     def __init__(
         self,
