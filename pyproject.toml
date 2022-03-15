@@ -25,9 +25,8 @@ classifiers = [
     "Intended Audience :: Telecommunications Industry",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
 ]
 requires = [
     "requests>=2.19.0",
@@ -51,7 +50,7 @@ test = [
     "apache-license-check",
     "black",
     "flake8",
-    "flake8-bandit",
+    "flake8-bandit>=3.0.0",
     "flake8-bugbear",
     "flake8-comprehensions",
     "flake8-docstrings",

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 SURF.
+# Copyright 2019-2022 SURF.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 import contextlib
 from asyncio import new_event_loop
 from http import HTTPStatus
-from typing import Any, Generator, Optional
+from typing import Any, Generator
 
 import structlog
 import urllib3
@@ -92,7 +92,7 @@ class AsyncAuthMixin:
 
     """
 
-    _token: Optional[dict]
+    _token: dict | None
 
     def __init__(
         self,

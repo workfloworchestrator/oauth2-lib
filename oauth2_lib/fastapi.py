@@ -1,4 +1,4 @@
-# Copyright 2019-2020 SURF.
+# Copyright 2019-2022 SURF.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 import re
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Callable, Coroutine, List, Mapping, Optional, Set, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Mapping, cast
 
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import Depends
@@ -87,39 +87,39 @@ class OIDCUserModel(dict):
         return self.get("eduperson_principal_name", "")
 
     @property
-    def memberships(self) -> List[str]:
+    def memberships(self) -> list[str]:
         return self.get("edumember_is_member_of", [])
 
     @property
-    def teams(self) -> Set[str]:
+    def teams(self) -> set[str]:
         prefix = "urn:collab:group:surfteams.nl:nl:surfnet:diensten:"
         length = len(prefix)
         return {urn[length:] for urn in self.memberships if urn.startswith(prefix)}
 
     @property
-    def entitlements(self) -> List[str]:
+    def entitlements(self) -> list[str]:
         return self.get("eduperson_entitlement", [])
 
     @property
-    def roles(self) -> Set[str]:
+    def roles(self) -> set[str]:
         prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:role:"
         length = len(prefix)
         return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
 
     @property
-    def organization_codes(self) -> Set[str]:
+    def organization_codes(self) -> set[str]:
         prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationCode:"
         length = len(prefix)
         return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
 
     @property
-    def organization_guids(self) -> Set[str]:
+    def organization_guids(self) -> set[str]:
         prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationGUID:"
         length = len(prefix)
         return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
 
     @property
-    def scopes(self) -> Set[str]:
+    def scopes(self) -> set[str]:
         if isinstance(self.get("scope"), list):
             return set(self.get("scope"))  # type: ignore
         return set(re.split("[ ,]", self.get("scope", "")))
@@ -141,17 +141,17 @@ class OIDCConfig(BaseModel):
     userinfo_endpoint: str
     introspect_endpoint: str
     jwks_uri: str
-    response_types_supported: List[str]
-    response_modes_supported: List[str]
-    grant_types_supported: List[str]
-    subject_types_supported: List[str]
-    id_token_signing_alg_values_supported: List[str]
-    scopes_supported: List[str]
-    token_endpoint_auth_methods_supported: List[str]
-    claims_supported: List[str]
+    response_types_supported: list[str]
+    response_modes_supported: list[str]
+    grant_types_supported: list[str]
+    subject_types_supported: list[str]
+    id_token_signing_alg_values_supported: list[str]
+    scopes_supported: list[str]
+    token_endpoint_auth_methods_supported: list[str]
+    claims_supported: list[str]
     claims_parameter_supported: bool
     request_parameter_supported: bool
-    code_challenge_methods_supported: List[str]
+    code_challenge_methods_supported: list[str]
 
 
 class OPAResult(BaseModel):
@@ -168,7 +168,7 @@ class OIDCUser(HTTPBearer):
         2. When receiving an active token it will enrich the response through the database roles
     """
 
-    openid_config: Optional[OIDCConfig] = None
+    openid_config: OIDCConfig | None = None
     openid_url: str
     resource_server_id: str
     resource_server_secret: str
@@ -181,7 +181,7 @@ class OIDCUser(HTTPBearer):
         resource_server_secret: str,
         enabled: bool = True,
         auto_error: bool = True,
-        scheme_name: Optional[str] = None,
+        scheme_name: str | None = None,
     ):
         super().__init__(auto_error=auto_error)
         self.openid_url = openid_url
@@ -191,8 +191,8 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(  # type: ignore
-        self, request: Request, async_request: AsyncClient = Depends(async_client), token: Optional[str] = None
-    ) -> Optional[OIDCUserModel]:
+        self, request: Request, async_request: AsyncClient = Depends(async_client), token: str | None = None
+    ) -> OIDCUserModel | None:
         """
         Return the OIDC user from OIDC introspect endpoint.
 
@@ -284,13 +284,13 @@ def opa_decision(
     oidc_security: OIDCUser,
     enabled: bool = True,
     auto_error: bool = True,
-    opa_kwargs: Optional[Mapping[str, str]] = None,
-) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, Optional[bool]]]:
+    opa_kwargs: Mapping[str, str] | None = None,
+) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, bool | None]]:
     async def _opa_decision(
         request: Request,
         user_info: OIDCUserModel = Depends(oidc_security),
         async_request: AsyncClient = Depends(async_client),
-    ) -> Optional[bool]:
+    ) -> bool | None:
         """
         Check OIDCUserModel against the OPA policy.
 
