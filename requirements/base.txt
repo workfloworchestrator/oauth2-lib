@@ -1,4 +1,4 @@
-authlib>=0.15.2
+authlib==0.15.5
 fastapi>=0.65.1
 httpx~=0.18.1
 more-itertools~=8.7.0
