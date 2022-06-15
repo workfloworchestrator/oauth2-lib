@@ -26,6 +26,13 @@ from structlog import get_logger
 
 logger = get_logger(__name__)
 
+try:
+    import h2  # noqa
+
+    http2 = True
+except ImportError:  # pragma: nocover
+    http2 = False
+
 
 class OIDCUserModel(dict):
     """The standard claims of a OIDCUserModel object. Defined per `Section 5.1`_.
@@ -130,7 +137,7 @@ class OIDCUserModel(dict):
 
 
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient() as client:
+    async with AsyncClient(http2=http2, http1=not http2) as client:
         yield client
 
 
