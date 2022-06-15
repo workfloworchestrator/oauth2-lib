@@ -17,7 +17,7 @@ from typing import Any, Generator
 
 import structlog
 import urllib3
-from authlib.integrations.base_client import BaseOAuth, RemoteApp
+from authlib.integrations.base_client import BaseOAuth
 from opentelemetry import context  # type: ignore
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.version import __version__
@@ -104,7 +104,7 @@ class AsyncAuthMixin:
         **kwargs: Any,
     ):
         super().__init__(*args, **kwargs)
-        self._oauth_client: RemoteApp = getattr(oauth_client, oauth_client_name)
+        self._oauth_client: BaseOAuth = getattr(oauth_client, oauth_client_name)
         self._oauth_active = oauth_active
         self._tracing_enabled = tracing_enabled
         self._token = None
