@@ -36,8 +36,7 @@ requires = [
     "httpx[http2]==0.23.0",
     "authlib==1.0.1",
     "pydantic>=1.8.0",
-    "opentelemetry-api~=1.9.1",
-    "opentelemetry-instrumentation~=0.28b1",
+    "opentelemetry-distro",
 ]
 description-file = "README.md"
 requires-python = ">3.8"
