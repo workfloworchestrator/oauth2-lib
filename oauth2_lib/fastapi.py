@@ -217,9 +217,12 @@ class OIDCUser(HTTPBearer):
             if token:
                 user_info = await self.introspect_token(async_request, token)
 
+                if "active" not in user_info:
+                    logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
+                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
                 if not user_info.get("active", False):
-                    logger.debug("Token is invalid", url=request.url, user_info=user_info)
-                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Access token is invalid")
+                    logger.error("User is not active", url=request.url, user_info=user_info)
+                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
 
                 logger.debug("OIDCUserModel object.", user_info=user_info)
                 return user_info
