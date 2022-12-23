@@ -367,3 +367,70 @@ def opa_decision(
         return None
 
     return _opa_decision
+
+
+def opa_graphql_decision(
+    opa_url: str,
+    _oidc_security: OIDCUser,
+    enabled: bool = True,
+    auto_error: bool = True,
+    opa_kwargs: Mapping[str, str] | None = None,
+) -> Callable[[str], Coroutine[Any, Any, bool | None]]:
+    async def _opa_decision(
+        path: str,
+        oidc_user: OIDCUserModel,
+    ) -> bool | None:
+        """
+        Check OIDCUserModel against the OPA policy.
+
+        This is used as a security module in Graphql projects
+        This method will make an async call towards the Policy agent.
+
+        Args:
+            path: the graphql path that will be checked against the permissions of the oidc_user
+            oidc_user: The OIDCUserModel object that will be checked
+        """
+        if enabled:
+            opa_input = {
+                "input": {
+                    **(opa_kwargs or {}),
+                    **oidc_user,
+                    "resource": path,
+                    "method": "POST",
+                }
+            }
+
+            logger.debug("Posting input json to Policy agent", input=opa_input)
+
+            try:
+                result = await AsyncClient(http1=True).post(opa_url, json=opa_input)
+            except (NetworkError, TypeError):
+                raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
+
+            data = OPAResult.parse_obj(result.json())
+
+            resource = opa_input["input"]["resource"]
+
+            if not data.result and auto_error:
+                logger.debug(
+                    "User is not allowed to access the resource",
+                    decision_id=data.decision_id,
+                    path=path,
+                    input=opa_input,
+                )
+                return False
+            else:
+                if data.result:
+                    logger.debug(
+                        "User is authorized to access the resource",
+                        decision_id=data.decision_id,
+                        resource=resource,
+                        path=path,
+                        input=opa_input,
+                    )
+
+                return data.result
+
+        return None
+
+    return _opa_decision
