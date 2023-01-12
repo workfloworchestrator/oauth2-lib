@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 
-from oauth2_lib.fastapi import opa_decision, OIDCUser
+from oauth2_lib.fastapi import OIDCUser, opa_decision
 from tests.test_fastapi import user_info_matching
 
 
