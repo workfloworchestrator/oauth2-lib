@@ -335,4 +335,3 @@ def test_OIDCUserModel():
     assert user_model.organization_codes == set()
     assert user_model.organization_guids == set()
     assert user_model.scopes == {"openid", "test:scope"}
-
