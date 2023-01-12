@@ -18,11 +18,11 @@ from typing import Any, Generator
 import structlog
 import urllib3
 from authlib.integrations.base_client import BaseOAuth
-from opentelemetry import context  # type: ignore
+from opentelemetry import context
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.version import __version__
-from opentelemetry.propagate import inject  # type: ignore
-from opentelemetry.trace import Span, SpanKind, get_tracer  # type: ignore
+from opentelemetry.propagate import inject
+from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 
 logger = structlog.get_logger(__name__)

@@ -375,7 +375,7 @@ def opa_graphql_decision(
     enabled: bool = True,
     auto_error: bool = True,
     opa_kwargs: Mapping[str, str] | None = None,
-) -> Callable[[str], Coroutine[Any, Any, bool | None]]:
+) -> Callable[[str, OIDCUserModel], Coroutine[Any, Any, bool | None]]:
     async def _opa_decision(
         path: str,
         oidc_user: OIDCUserModel,
