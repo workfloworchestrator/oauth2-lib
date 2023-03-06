@@ -221,7 +221,6 @@ async def test_introspect_exception():
 
 @pytest.mark.asyncio
 async def test_OIDCUser():
-
     mock_request = mock.MagicMock(spec=Request)
     mock_request.headers = {"Authorization": "Bearer creds"}
 
@@ -239,7 +238,6 @@ async def test_OIDCUser():
 
 @pytest.mark.asyncio
 async def test_OIDCUser_with_token():
-
     mock_request = mock.MagicMock(spec=Request)
     mock_request.headers = {"Authorization": "Bearer creds"}
 
