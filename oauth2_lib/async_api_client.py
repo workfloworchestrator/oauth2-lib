@@ -144,7 +144,9 @@ class AsyncAuthMixin:
                 return super().request(  # type:ignore
                     method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
                 )
-
+            elif is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type:ignore
+                logger.debug(ex, url=url)  # noqa: G200
+                raise
             else:
                 logger.exception("Could not call API.", client=self.__class__.__name__)
                 raise
