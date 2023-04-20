@@ -10,14 +10,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 from asyncio import new_event_loop
+from collections.abc import Generator
 from http import HTTPStatus
 from typing import Any
 
 import structlog
+import urllib3
 from authlib.integrations.base_client import BaseOAuth
+from opentelemetry import context, trace
+from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.propagate import inject
+from opentelemetry.trace import Span, SpanKind, Status
+
+from oauth2_lib import __version__
 
 logger = structlog.get_logger(__name__)
+
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
 
 
 def is_api_exception(ex: Exception) -> bool:
@@ -35,6 +46,27 @@ def is_api_exception(ex: Exception) -> bool:
 
     """
     return ex.__class__.__name__ == "ApiException"
+
+
+def _apply_response(span: Span, response: urllib3.response.HTTPResponse) -> None:
+    if not span.is_recording():
+        return
+    span.set_attribute("http.status_code", response.status)
+    span.set_attribute("http.status_text", response.reason)
+    span.set_status(Status(http_status_to_status_code(response.status)))
+
+
+@contextlib.contextmanager
+def _suppress_further_instrumentation() -> Generator:
+    token = context.attach(context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True))
+    try:
+        yield
+    finally:
+        context.detach(token)
+
+
+def _is_instrumentation_suppressed() -> bool:
+    return bool(context.get_value("suppress_instrumentation") or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
 
 
 class AsyncAuthMixin:
@@ -129,24 +161,44 @@ class AsyncAuthMixin:
     ):
         headers = {} if headers is None else headers
 
-        try:
-            self.add_client_creds_token_header(headers)
-            return super().request(  # type:ignore
-                method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
-            )
-        except Exception as ex:
-            if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):  # type:ignore
-                logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
-                loop = new_event_loop()
-                loop.run_until_complete(self.refresh_client_creds_token(force=True))
-                self.add_client_creds_token_header(headers)
+        span_attributes = {
+            "http.method": method,
+            "http.url": url,
+        }
 
-                return super().request(  # type:ignore
-                    method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
-                )
-            elif is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type:ignore
-                logger.debug(ex, url=url)  # noqa: G200
-                raise
-            else:
-                logger.exception("Could not call API.", client=self.__class__.__name__)
-                raise
+        with trace.get_tracer(__name__, __version__).start_as_current_span(
+            f"External Api Call {self.__class__.__name__}", kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
+            try:
+                self.add_client_creds_token_header(headers)
+                if self._tracing_enabled and not _is_instrumentation_suppressed():
+                    inject(type(headers).__setitem__, headers)
+                with _suppress_further_instrumentation():
+                    response = super().request(  # type:ignore
+                        method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
+                    )
+                _apply_response(span, response)
+                return response
+            except Exception as ex:
+                if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):  # type:ignore
+                    logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
+                    loop = new_event_loop()
+                    loop.run_until_complete(self.refresh_client_creds_token(force=True))
+                    self.add_client_creds_token_header(headers)
+
+                    if self._tracing_enabled and not _is_instrumentation_suppressed():
+                        inject(type(headers).__setitem__, headers)
+                    with _suppress_further_instrumentation():
+                        response = super().request(  # type:ignore
+                            method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
+                        )
+                    _apply_response(span, response)
+                    return response
+                elif is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type:ignore
+                    logger.debug(ex, url=url)  # noqa: G200
+                    _apply_response(span, ex)
+                    raise
+                else:
+                    logger.exception("Could not call API.", client=self.__class__.__name__)
+                    _apply_response(span, ex)
+                    raise

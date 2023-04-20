@@ -33,6 +33,7 @@ requires = [
     "ruamel.yaml~=0.16.10",
     "structlog>=20.2.0",
     "fastapi>=0.90.1",
+    "opentelemetry-distro",
     "httpx[http2]==0.23.0",
     "authlib==1.0.1",
     "pydantic>=1.8.0",
