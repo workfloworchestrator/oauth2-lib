@@ -32,3 +32,11 @@ bumpversion patch
 
 ## For MAC users looking and experimenting with Opentelemetry (OTEL)
 https://github.com/jaegertracing/jaeger-client-node/issues/124#issuecomment-324222456
+
+## Supported Python versions
+
+oauth2-lib must support the same python versions as [orchestrator-core](https://github.com/workfloworchestrator/orchestrator-core).
+
+Exceptions to this rule are:
+* **A new python version is released:** oauth2-lib should support the new version before orchestrator-core does
+* **Support for an old python version is dropped:** oauth2-lib should drop the python version after orchestrator-core does

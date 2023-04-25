@@ -11,9 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from collections.abc import AsyncGenerator, Coroutine, Mapping
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Callable, Coroutine, Mapping, cast
+from typing import Any, Callable, Union, cast
 
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import Depends
@@ -168,7 +169,7 @@ class OIDCUser(HTTPBearer):
         2. When receiving an active token it will enrich the response through the database roles
     """
 
-    openid_config: OIDCConfig | None = None
+    openid_config: Union[OIDCConfig, None] = None
     openid_url: str
     resource_server_id: str
     resource_server_secret: str
@@ -181,7 +182,7 @@ class OIDCUser(HTTPBearer):
         resource_server_secret: str,
         enabled: bool = True,
         auto_error: bool = True,
-        scheme_name: str | None = None,
+        scheme_name: Union[str, None] = None,
     ):
         super().__init__(auto_error=auto_error)
         self.openid_url = openid_url
@@ -190,7 +191,7 @@ class OIDCUser(HTTPBearer):
         self.enabled = enabled
         self.scheme_name = scheme_name or self.__class__.__name__
 
-    async def __call__(self, request: Request, token: str | None = None) -> OIDCUserModel | None:  # type: ignore
+    async def __call__(self, request: Request, token: Union[str, None] = None) -> Union[OIDCUserModel, None]:  # type: ignore
         """
         Return the OIDC user from OIDC introspect endpoint.
 
@@ -285,13 +286,13 @@ def opa_decision(
     oidc_security: OIDCUser,
     enabled: bool = True,
     auto_error: bool = True,
-    opa_kwargs: Mapping[str, str] | None = None,
-) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, bool | None]]:
+    opa_kwargs: Union[Mapping[str, str], None] = None,
+) -> Callable[[Request, OIDCUserModel, AsyncClient], Coroutine[Any, Any, Union[bool, None]]]:
     async def _opa_decision(
         request: Request,
         user_info: OIDCUserModel = Depends(oidc_security),
         async_request: AsyncClient = Depends(async_client),
-    ) -> bool | None:
+    ) -> Union[bool, None]:
         """
         Check OIDCUserModel against the OPA policy.
 
@@ -372,12 +373,12 @@ def opa_graphql_decision(
     _oidc_security: OIDCUser,
     enabled: bool = True,
     auto_error: bool = True,
-    opa_kwargs: Mapping[str, str] | None = None,
-) -> Callable[[str, OIDCUserModel], Coroutine[Any, Any, bool | None]]:
+    opa_kwargs: Union[Mapping[str, str], None] = None,
+) -> Callable[[str, OIDCUserModel], Coroutine[Any, Any, Union[bool, None]]]:
     async def _opa_decision(
         path: str,
         oidc_user: OIDCUserModel = Depends(_oidc_security),
-    ) -> bool | None:
+    ) -> Union[bool, None]:
         """
         Check OIDCUserModel against the OPA policy.
 
