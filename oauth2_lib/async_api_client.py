@@ -14,7 +14,7 @@ import contextlib
 from asyncio import new_event_loop
 from collections.abc import Generator
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Union
 
 import structlog
 import urllib3
@@ -93,7 +93,7 @@ class AsyncAuthMixin:
 
     """
 
-    _token: dict | None
+    _token: Union[dict, None]
 
     def __init__(
         self,
