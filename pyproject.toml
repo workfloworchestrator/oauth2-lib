@@ -31,7 +31,6 @@ classifiers = [
 ]
 requires = [
     "requests>=2.19.0",
-    "ruamel.yaml~=0.16.10",
     "structlog>=20.2.0",
     "fastapi>=0.90.1",
     "opentelemetry-distro",
