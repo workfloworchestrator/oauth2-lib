@@ -62,12 +62,14 @@ test = [
     "flake8-tidy-imports",
     "isort",
     "mypy",
+    "opentelemetry-instrumentation-urllib3",
     "pygments",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
     "pytest-xdist",
     "requests_mock",
+    "urllib3_mock==0.3.3",
 ]
 dev = ["bumpversion", "pre-commit"]
 
