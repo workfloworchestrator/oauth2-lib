@@ -297,7 +297,7 @@ async def test_OIDCUser_no_creds_no_error():
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
     openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
-    result = await openid_bearer(mock_request, None)  # type:ignore
+    result = await openid_bearer(mock_request, None)
 
     assert result is None
 
