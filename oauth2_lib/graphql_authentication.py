@@ -29,7 +29,9 @@ logger = structlog.get_logger(__name__)
 
 
 class OauthContext(BaseContext):
-    def __init__(self, get_current_user: Callable[[], OIDCUserModel], get_opa_decision: Callable[[str], bool]):
+    def __init__(
+        self, get_current_user: Callable[[Any], OIDCUserModel], get_opa_decision: Callable[[str, OIDCUserModel], bool]
+    ):
         self.get_current_user = get_current_user
         self.get_opa_decision = get_opa_decision
         super().__init__()
@@ -49,21 +51,24 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        if not os.environ.get("OAUTH2_ACTIVE"):
+        oauth_active = os.environ.get("OAUTH2_ACTIVE") == "True"
+
+        if not oauth_active:
             return True
 
-        service_name = f"/{os.environ.get('SERVICE_NAME') or ''}"
-        path = f"{service_name}/{get_path_as_string(info.path)}/".lower()  # type: ignore
+        service_name = os.environ.get("SERVICE_NAME")
+        service_name_path = f"/{service_name}" if service_name else ""
+        path = f"{service_name_path}/{get_path_as_string(info.path)}/".lower()
 
-        context = info.context  # type: ignore
+        context = info.context
         try:
-            logger.debug("Request headers", headers=info.context.request.headers)  # type: ignore
-            current_user = await context.get_current_user(info.context.request)  # type: ignore
+            logger.debug("Request headers", headers=context.request.headers)  # type: ignore
+            current_user = await context.get_current_user(context.request)  # type: ignore
         except HTTPException:
             self.message = f"User is not authorized to query or has an invalid access token for path: `{path}`"
             return False
 
-        opa_decision: bool = await context.get_opa_decision(path, current_user)
+        opa_decision: bool = await context.get_opa_decision(path, current_user)  # type: ignore
 
         logger.debug("Get opa decision", path=path, opa_decision=opa_decision)
         if not opa_decision:
@@ -76,14 +81,25 @@ class IsAuthenticatedForMutation(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        mutations_active = os.environ.get("OAUTH2_ACTIVE") and os.environ.get("MUTATIONS_ENABLED")
+        oauth_active = os.environ.get("OAUTH2_ACTIVE") == "True"
+        mutations_enabled = os.environ.get("MUTATIONS_ENABLED") == "True"
+        mutations_active = oauth_active and mutations_enabled
         env_ignore_mutation_disabled: list[str] = os.environ.get("ENVIRONMENT_IGNORE_MUTATION_DISABLED") or []  # type: ignore
-        service_name = f"/{os.environ.get('SERVICE_NAME') or ''}"
+
+        service_name = os.environ.get("SERVICE_NAME")
+        service_name_path = f"/{service_name}" if service_name else ""
+        path = f"{service_name_path}/{info.path.key}"
 
         if not mutations_active:
-            return os.environ.get("ENVIRONMENT") in env_ignore_mutation_disabled
+            is_exception = os.environ.get("ENVIRONMENT") in env_ignore_mutation_disabled
+            logger.debug(
+                "Mutations are disabled",
+                OAUTH2_ACTIVE=oauth_active,
+                MUTATIONS_ENABLED=mutations_enabled,
+                is_exception=is_exception,
+            )
+            return is_exception
 
-        path = f"{service_name}/{info.path.key}"  # type: ignore
         try:
             current_user = await info.context.get_current_user(info.context.request)  # type: ignore
         except HTTPException:
@@ -102,12 +118,29 @@ def authenticated_field(
     description: str,
     resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
     deprecation_reason: Union[str, None] = None,
+    permission_classes: Union[list[type[BasePermission]], None] = None,
 ) -> Any:
+    permissions = permission_classes if permission_classes else []
     return strawberry.field(
         description=description,
-        resolver=resolver,
+        resolver=resolver,  # type: ignore
         deprecation_reason=deprecation_reason,
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated] + permissions,
+    )
+
+
+def authenticated_mutation_field(
+    description: str,
+    resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
+    deprecation_reason: Union[str, None] = None,
+    permission_classes: Union[list[type[BasePermission]], None] = None,
+) -> Any:
+    permissions = permission_classes if permission_classes else []
+    return strawberry.field(
+        description=description,
+        resolver=resolver,  # type: ignore
+        deprecation_reason=deprecation_reason,
+        permission_classes=[IsAuthenticatedForMutation] + permissions,
     )
 
 
@@ -116,13 +149,15 @@ def authenticated_federated_field(  # type: ignore
     resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
     deprecation_reason: Union[str, None] = None,
     requires: Union[list[str], None] = None,
+    permission_classes: Union[list[type[BasePermission]], None] = None,
     **kwargs,
 ) -> Any:
+    permissions = permission_classes if permission_classes else []
     return strawberry.federation.field(
         description=description,
-        resolver=resolver,
+        resolver=resolver,  # type: ignore
         deprecation_reason=deprecation_reason,
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated] + permissions,
         requires=requires,
         **kwargs,
     )

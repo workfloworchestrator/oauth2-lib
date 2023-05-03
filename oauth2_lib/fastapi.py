@@ -374,11 +374,12 @@ def opa_graphql_decision(
     enabled: bool = True,
     auto_error: bool = True,
     opa_kwargs: Union[Mapping[str, str], None] = None,
+    async_request: Union[AsyncClient, None] = None,
 ) -> Callable[[str, OIDCUserModel], Coroutine[Any, Any, Union[bool, None]]]:
     async def _opa_decision(
         path: str,
         oidc_user: OIDCUserModel = Depends(_oidc_security),
-        async_request: AsyncClient = Depends(async_client),
+        async_request_1: Union[AsyncClient, None] = None,
     ) -> Union[bool, None]:
         """
         Check OIDCUserModel against the OPA policy.
@@ -401,9 +402,10 @@ def opa_graphql_decision(
             }
 
             logger.debug("Posting input json to Policy agent", input=opa_input)
-
+            client_request = async_request if async_request else async_request_1
+            client_request = client_request if client_request else AsyncClient(http1=True)
             try:
-                result = await async_request.post(opa_url, json=opa_input)
+                result = await client_request.post(opa_url, json=opa_input)
             except (NetworkError, TypeError):
                 raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
 
