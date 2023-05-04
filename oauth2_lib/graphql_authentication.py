@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 from typing import Any, Callable, Union
 
 import strawberry
@@ -24,6 +23,7 @@ from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.types.info import RootValueType
 
 from oauth2_lib.fastapi import OIDCUserModel
+from oauth2_lib.settings import oauth2lib_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -51,12 +51,10 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        oauth_active = os.environ.get("OAUTH2_ACTIVE") == "True"
-
-        if not oauth_active:
+        if not oauth2lib_settings.OAUTH2_ACTIVE:
             return True
 
-        service_name = os.environ.get("SERVICE_NAME")
+        service_name = oauth2lib_settings.SERVICE_NAME
         service_name_path = f"/{service_name}" if service_name else ""
         path = f"{service_name_path}/{get_path_as_string(info.path)}/".lower()
 
@@ -81,21 +79,18 @@ class IsAuthenticatedForMutation(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        oauth_active = os.environ.get("OAUTH2_ACTIVE") == "True"
-        mutations_enabled = os.environ.get("MUTATIONS_ENABLED") == "True"
-        mutations_active = oauth_active and mutations_enabled
-        env_ignore_mutation_disabled: list[str] = os.environ.get("ENVIRONMENT_IGNORE_MUTATION_DISABLED") or []  # type: ignore
+        mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
 
-        service_name = os.environ.get("SERVICE_NAME")
+        service_name = oauth2lib_settings.SERVICE_NAME
         service_name_path = f"/{service_name}" if service_name else ""
         path = f"{service_name_path}/{info.path.key}"
 
         if not mutations_active:
-            is_exception = os.environ.get("ENVIRONMENT") in env_ignore_mutation_disabled
+            is_exception = oauth2lib_settings.ENVIRONMENT in oauth2lib_settings.ENVIRONMENT_IGNORE_MUTATION_DISABLED
             logger.debug(
                 "Mutations are disabled",
-                OAUTH2_ACTIVE=oauth_active,
-                MUTATIONS_ENABLED=mutations_enabled,
+                OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+                MUTATIONS_ENABLED=oauth2lib_settings.MUTATIONS_ENABLED,
                 is_exception=is_exception,
             )
             return is_exception
