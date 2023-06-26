@@ -52,7 +52,7 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse) -> None
     if not span.is_recording():
         return
     span.set_attribute("http.status_code", response.status)
-    span.set_attribute("http.status_text", response.reason)
+    span.set_attribute("http.status_text", response.reason)  # type: ignore
     span.set_status(Status(http_status_to_status_code(response.status)))
 
 
@@ -196,9 +196,9 @@ class AsyncAuthMixin:
                     return response
                 elif is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type:ignore
                     logger.debug(ex, url=url)  # noqa: G200
-                    _apply_response(span, ex)
+                    _apply_response(span, ex)  # type: ignore
                     raise
                 else:
                     logger.exception("Could not call API.", client=self.__class__.__name__)
-                    _apply_response(span, ex)
+                    _apply_response(span, ex)  # type: ignore
                     raise
