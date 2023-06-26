@@ -129,6 +129,10 @@ class OIDCUserModel(dict):
     def is_resource_server(self) -> bool:
         return self.get("is_resource_server", False)
 
+    @property
+    def surf_crm_id(self) -> bool:
+        return self.get("surf-crm-id", "")
+
 
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(http1=True) as client:
