@@ -129,7 +129,7 @@ class OIDCUserModel(dict):
         return self.get("is_resource_server", False)
 
     @property
-    def surf_crm_id(self) -> bool:
+    def surf_crm_id(self) -> str:
         return self.get("surf-crm-id", "")
 
 
