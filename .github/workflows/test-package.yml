@@ -26,13 +26,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install flit
           flit install --deps develop --symlink
-      - name: Flake8, Black, Isort and MyPy
-        run: |
-          flake8 .
+      - name: Black, Ruff and MyPy
       - name: Lint
         run: |
           black . --check
-          isort -c .
+          ruff .
       - name: MyPy
         run: |
           mypy -p oauth2_lib

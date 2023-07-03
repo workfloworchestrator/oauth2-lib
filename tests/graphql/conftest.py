@@ -15,7 +15,7 @@ from tests.test_fastapi import user_info_matching
 
 
 @pytest.fixture
-def mock_graphql_app(make_mock_async_client):
+def mock_graphql_app(make_mock_async_client):  # noqa: C901
     def _mock_graphql_app(authorized=True):
         mock_async_client = make_mock_async_client({"result": authorized, "decision_id": "hoi"})
 

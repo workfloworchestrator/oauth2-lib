@@ -77,3 +77,4 @@ ENV/
 .mypy_cache/
 type_info.json
 install/
+.ruff_cache

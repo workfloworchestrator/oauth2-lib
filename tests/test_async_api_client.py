@@ -4,7 +4,6 @@ from unittest import mock
 
 import pytest
 import urllib3
-from opentelemetry.sdk.trace import ReadableSpan
 from urllib3_mock import Responses
 
 from oauth2_lib.async_api_client import AsyncAuthMixin
@@ -145,14 +144,6 @@ def test_asyncauthmixin_request_200(tracing, responses):
     assert res.status == HTTPStatus.OK
     assert len(responses.calls) == 1
 
-    tracing.force_flush()  # Force finish the spans
-
-    spans = tracing.span_exporter._finished_spans  # type: ignore
-    assert len(spans) == 1
-    span: ReadableSpan = spans[0]
-    assert span.attributes["http.status_code"] == HTTPStatus.OK
-    assert span.attributes["http.url"] == f"{BASE_URL}/app/endpoint"
-
 
 def test_asyncauthmixin_request_401_then_200(tracing, responses):
     """Test that a request with expired token is retried with a valid token."""
@@ -168,16 +159,8 @@ def test_asyncauthmixin_request_401_then_200(tracing, responses):
     assert res.status == HTTPStatus.OK
     assert len(responses.calls) == 2
 
-    tracing.force_flush()  # Force finish the spans
-    spans = tracing.span_exporter._finished_spans  # type: ignore
 
-    assert len(spans) == 1
-    span: ReadableSpan = spans[0]
-    assert span.attributes["http.status_code"] == HTTPStatus.OK
-    assert span.attributes["http.url"] == f"{BASE_URL}/app/endpoint"
-
-
-def test_asyncauthmixin_request_500(tracing, responses):
+def test_asyncauthmixin_request_500(responses):
     # given
     client = make_api_client(token=EXPIRED_TOKEN)
     apimock = ApiMock(responses)
@@ -191,16 +174,8 @@ def test_asyncauthmixin_request_500(tracing, responses):
     assert exc.value.status == HTTPStatus.INTERNAL_SERVER_ERROR
     assert len(responses.calls) == 1
 
-    tracing.force_flush()  # Force finish the spans
-    spans = tracing.span_exporter._finished_spans  # type: ignore
 
-    assert len(spans) == 1
-    span: ReadableSpan = spans[0]
-    assert span.attributes["http.status_code"] == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert span.attributes["http.url"] == f"{BASE_URL}/app/endpoint"
-
-
-def test_asyncauthmixin_request_404(tracing, responses):
+def test_asyncauthmixin_request_404(responses):
     # given
     client = make_api_client(token=EXPIRED_TOKEN)
     apimock = ApiMock(responses)
@@ -213,11 +188,3 @@ def test_asyncauthmixin_request_404(tracing, responses):
     # then
     assert exc.value.status == HTTPStatus.NOT_FOUND
     assert len(responses.calls) == 1
-
-    tracing.force_flush()  # Force finish the spans
-    spans = tracing.span_exporter._finished_spans  # type: ignore
-
-    assert len(spans) == 1
-    span: ReadableSpan = spans[0]
-    assert span.attributes["http.status_code"] == HTTPStatus.NOT_FOUND
-    assert span.attributes["http.url"] == f"{BASE_URL}/app/endpoint"

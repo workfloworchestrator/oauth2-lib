@@ -33,7 +33,6 @@ requires = [
     "requests>=2.19.0",
     "structlog>=20.2.0",
     "fastapi>=0.90.1",
-    "opentelemetry-distro",
     "httpx[http2]==0.23.0",
     "authlib==1.0.1",
     "pydantic>=1.8.0",
@@ -49,19 +48,7 @@ Documentation = "https://workfloworchestrator.org/"
 test = [
     "apache-license-check",
     "black",
-    "flake8",
-    "flake8-bandit>=3.0.0",
-    "flake8-bugbear",
-    "flake8-comprehensions",
-    "flake8-docstrings",
-    "flake8-junit-report",
-    "flake8-logging-format",
-    "flake8-pep3101",
-    "flake8-print",
-    "flake8-rst",
-    "flake8-rst-docstrings",
-    "flake8-tidy-imports",
-    "isort",
+    "ruff",
     "mypy==1.3.0",
     "opentelemetry-instrumentation-urllib3",
     "pygments",
@@ -100,3 +87,53 @@ exclude = '''
 
 [tool.nitpick]
 style = "github://workfloworchestrator/nitpick-style@main/nitpick-style.toml"
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".cache",
+    ".eggs",
+    "__pycache__",
+    "dist",
+    "src",
+    "crypt.py",
+    "venv",
+    "build",
+    ".venv",
+]
+ignore = [
+    "B008",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D202",
+    "E501",
+    "S101",
+    "N806",
+    "B904",
+    "N802",
+    "N801",
+    "N818"
+]
+line-length = 120
+select = [
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "I",
+    "N",
+    "RET",
+    "S",
+    "T",
+    "W",
+]
+target-version = "py310"
+
+[tool.ruff.pydocstyle]
+convention = "google"
