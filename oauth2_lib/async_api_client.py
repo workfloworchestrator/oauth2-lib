@@ -68,14 +68,12 @@ class AsyncAuthMixin:
         oauth_client: BaseOAuth,
         oauth_client_name: str,
         oauth_active: bool,
-        tracing_enabled: bool,
         *args: Any,
         **kwargs: Any,
     ):
         super().__init__(*args, **kwargs)
         self._oauth_client: BaseOAuth = getattr(oauth_client, oauth_client_name)
         self._oauth_active = oauth_active
-        self._tracing_enabled = tracing_enabled
         self._token = None
 
     def add_client_creds_token_header(self, headers: dict[str, Any]) -> None:

@@ -83,7 +83,6 @@ def make_api_client(url=BASE_URL, token=VALID_TOKEN):
                 oauth_client=base_oauth_client,
                 oauth_client_name="actualclient",
                 oauth_active=True,
-                tracing_enabled=True,
                 configuration=config,
             )
 
@@ -128,7 +127,7 @@ class ApiMock:
         )
 
 
-def test_asyncauthmixin_request_200(tracing, responses):
+def test_asyncauthmixin_request_200(responses):
     """Test that making a request with valid token works."""
 
     # given
@@ -145,7 +144,7 @@ def test_asyncauthmixin_request_200(tracing, responses):
     assert len(responses.calls) == 1
 
 
-def test_asyncauthmixin_request_401_then_200(tracing, responses):
+def test_asyncauthmixin_request_401_then_200(responses):
     """Test that a request with expired token is retried with a valid token."""
     # given
     client = make_api_client(token=EXPIRED_TOKEN)
