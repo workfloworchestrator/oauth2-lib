@@ -21,7 +21,7 @@ class Oauth2LibSettings(BaseSettings):
     ENVIRONMENT: str = "local"
     SERVICE_NAME: str = ""
     MUTATIONS_ENABLED: bool = False
-    ENVIRONMENT_IGNORE_MUTATION_DISABLED: list[str] = []
+    ENVIRONMENT_IGNORE_MUTATION_DISABLED: list[str] = ["development", "pre-prod"]
     OAUTH2_ACTIVE: bool = False
 
 

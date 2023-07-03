@@ -37,6 +37,7 @@ requires = [
     "authlib==1.0.1",
     "pydantic>=1.8.0,<2.0.0",
     "strawberry-graphql>=0.171.1",
+    "asyncstdlib",
 ]
 description-file = "README.md"
 requires-python = ">=3.9"
