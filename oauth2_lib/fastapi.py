@@ -74,10 +74,9 @@ class OIDCUserModel(dict):
     def user_name(self) -> str:
         if "user_name" in self.keys():
             return cast(str, self["user_name"])
-        elif "unspecified_id" in self.keys():
+        if "unspecified_id" in self.keys():
             return cast(str, self["unspecified_id"])
-        else:
-            return ""
+        return ""
 
     @property
     def display_name(self) -> str:
@@ -165,8 +164,7 @@ class OPAResult(BaseModel):
 
 
 class OIDCUser(HTTPBearer):
-    """
-    OIDCUser class extends the HTTPBearer class to do extra verification.
+    """OIDCUser class extends the HTTPBearer class to do extra verification.
 
     The class will act as follows:
         1. Validate the Credentials at SURFconext by calling the UserInfo endpoint
@@ -196,8 +194,7 @@ class OIDCUser(HTTPBearer):
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(self, request: Request, token: Union[str, None] = None) -> Union[OIDCUserModel, None]:  # type: ignore
-        """
-        Return the OIDC user from OIDC introspect endpoint.
+        """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
 
@@ -241,10 +238,10 @@ class OIDCUser(HTTPBearer):
         self.openid_config = OIDCConfig.parse_obj(response.json())
 
     async def introspect_token(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
-        """
-        Introspect the access token to retrieve the user info.
+        """Introspect the access token to retrieve the user info.
 
         Args:
+            async_request: The async request
             token: the access_token
 
         Returns:
@@ -297,8 +294,7 @@ def opa_decision(
         user_info: OIDCUserModel = Depends(oidc_security),
         async_request: AsyncClient = Depends(async_client),
     ) -> Union[bool, None]:
-        """
-        Check OIDCUserModel against the OPA policy.
+        """Check OIDCUserModel against the OPA policy.
 
         This is used as a security module in Fastapi projects
         This method will make an async call towards the Policy agent.
@@ -354,18 +350,17 @@ def opa_decision(
                     status_code=HTTPStatus.FORBIDDEN,
                     detail=f"User is not allowed to access resource: {request.url.path} Decision was taken with id: {data.decision_id}",
                 )
-            else:
-                if data.result:
-                    logger.debug(
-                        "User is authorized to access the resource",
-                        decision_id=data.decision_id,
-                        resource=request.url.path,
-                        method=requestMethod,
-                        user_info=user_info,
-                        input=opa_input,
-                    )
+            if data.result:
+                logger.debug(
+                    "User is authorized to access the resource",
+                    decision_id=data.decision_id,
+                    resource=request.url.path,
+                    method=requestMethod,
+                    user_info=user_info,
+                    input=opa_input,
+                )
 
-                return data.result
+            return data.result
 
         return None
 
@@ -385,8 +380,7 @@ def opa_graphql_decision(
         oidc_user: OIDCUserModel = Depends(_oidc_security),
         async_request_1: Union[AsyncClient, None] = None,
     ) -> Union[bool, None]:
-        """
-        Check OIDCUserModel against the OPA policy.
+        """Check OIDCUserModel against the OPA policy.
 
         This is used as a security module in Graphql projects
         This method will make an async call towards the Policy agent.
@@ -394,6 +388,7 @@ def opa_graphql_decision(
         Args:
             path: the graphql path that will be checked against the permissions of the oidc_user
             oidc_user: The OIDCUserModel object that will be checked
+            async_request_1: The Async client
         """
         if enabled:
             opa_input = {
@@ -425,17 +420,16 @@ def opa_graphql_decision(
                     input=opa_input,
                 )
                 return False
-            else:
-                if data.result:
-                    logger.debug(
-                        "User is authorized to access the resource",
-                        decision_id=data.decision_id,
-                        resource=resource,
-                        path=path,
-                        input=opa_input,
-                    )
+            if data.result:
+                logger.debug(
+                    "User is authorized to access the resource",
+                    decision_id=data.decision_id,
+                    resource=resource,
+                    path=path,
+                    input=opa_input,
+                )
 
-                return data.result
+            return data.result
 
         return None
 
