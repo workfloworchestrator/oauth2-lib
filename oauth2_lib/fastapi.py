@@ -282,6 +282,33 @@ class OIDCUser(HTTPBearer):
         return OIDCUserModel(data)
 
 
+async def _get_decision(async_request: AsyncClient, opa_url: str, opa_input: dict) -> OPAResult:
+    logger.debug("Posting input json to Policy agent", opa_url=opa_url, input=opa_input)
+    try:
+        result = await async_request.post(opa_url, json=opa_input)
+    except (NetworkError, TypeError) as exc:
+        logger.debug("Could not get decision from policy agent", error=str(exc))
+        raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
+
+    return OPAResult.parse_obj(result.json())
+
+
+def _evaluate_decision(decision: OPAResult, auto_error: bool, **context: dict[str, Any]) -> bool:
+    did = decision.decision_id
+    if decision.result:
+        logger.debug("User is authorized to access the resource", decision_id=did, **context)
+        return True
+
+    logger.debug("User is not allowed to access the resource", decision_id=did, **context)
+    if not auto_error:
+        return False
+
+    raise HTTPException(
+        status_code=HTTPStatus.FORBIDDEN,
+        detail=f"User is not allowed to access resource: {context.get('resource')} Decision was taken with id: {did}",
+    )
+
+
 def opa_decision(
     opa_url: str,
     oidc_security: OIDCUser,
@@ -318,51 +345,27 @@ def opa_decision(
             json = {}
 
         # defaulting to GET request method for WebSocket request, it doesn't have .method
-        requestMethod = request.method if hasattr(request, "method") else "GET"
+        request_method = request.method if hasattr(request, "method") else "GET"
         opa_input = {
             "input": {
                 **(opa_kwargs or {}),
                 **user_info,
                 "resource": request.url.path,
-                "method": requestMethod,
+                "method": request_method,
                 "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
             }
         }
 
-        logger.debug("Posting input json to Policy agent", input=opa_input)
+        decision = await _get_decision(async_request, opa_url, opa_input)
 
-        try:
-            result = await async_request.post(opa_url, json=opa_input)
-        except (NetworkError, TypeError):
-            raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
-
-        data = OPAResult.parse_obj(result.json())
-
-        if not data.result and auto_error:
-            logger.debug(
-                "User is not allowed to access the resource",
-                decision_id=data.decision_id,
-                resource=request.url.path,
-                method=requestMethod,
-                user_info=user_info,
-                input=opa_input,
-                url=request.url,
-            )
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail=f"User is not allowed to access resource: {request.url.path} Decision was taken with id: {data.decision_id}",
-            )
-        if data.result:
-            logger.debug(
-                "User is authorized to access the resource",
-                decision_id=data.decision_id,
-                resource=request.url.path,
-                method=requestMethod,
-                user_info=user_info,
-                input=opa_input,
-            )
-
-        return data.result
+        context = {
+            "resource": opa_input["input"]["resource"],
+            "method": opa_input["input"]["method"],
+            "user_info": user_info,
+            "input": opa_input,
+            "url": request.url,
+        }
+        return _evaluate_decision(decision, auto_error, **context)
 
     return _opa_decision
 
@@ -371,7 +374,7 @@ def opa_graphql_decision(
     opa_url: str,
     _oidc_security: OIDCUser,
     enabled: bool = True,
-    auto_error: bool = True,
+    auto_error: bool = False,  # By default don't raise HTTP 403 because partial results are preferred
     opa_kwargs: Union[Mapping[str, str], None] = None,
     async_request: Union[AsyncClient, None] = None,
 ) -> Callable[[str, OIDCUserModel], Awaitable[Union[bool, None]]]:
@@ -402,35 +405,12 @@ def opa_graphql_decision(
             }
         }
 
-        logger.debug("Posting input json to Policy agent", input=opa_input)
         client_request = async_request if async_request else async_request_1
         client_request = client_request if client_request else AsyncClient(http1=True)
-        try:
-            result = await client_request.post(opa_url, json=opa_input)
-        except (NetworkError, TypeError):
-            raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
 
-        data = OPAResult.parse_obj(result.json())
+        decision = await _get_decision(client_request, opa_url, opa_input)
 
-        resource = opa_input["input"]["resource"]
-
-        if not data.result and auto_error:
-            logger.debug(
-                "User is not allowed to access the resource",
-                decision_id=data.decision_id,
-                path=path,
-                input=opa_input,
-            )
-            return False
-        if data.result:
-            logger.debug(
-                "User is authorized to access the resource",
-                decision_id=data.decision_id,
-                resource=resource,
-                path=path,
-                input=opa_input,
-            )
-
-        return data.result
+        context = {"resource": opa_input["input"]["resource"], "input": opa_input}
+        return _evaluate_decision(decision, auto_error, **context)
 
     return _opa_decision
