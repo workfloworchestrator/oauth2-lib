@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import cast
 
 import pytest
@@ -18,9 +19,31 @@ async def test_opa_graphql_decision_auto_error():
 
 
 @pytest.mark.asyncio
-async def test_opa_graphql_decision_user_not_allowed(make_mock_async_client):
+async def test_opa_graphql_decision_user_not_allowed_autoerror_true(make_mock_async_client):
     mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
-    opa_decision_security = opa_graphql_decision("https://opa_url.test", None)
+    opa_decision_security = opa_graphql_decision(
+        "https://opa_url.test",
+        None,
+        auto_error=True,
+    )
+
+    with pytest.raises(HTTPException) as exception:
+        await opa_decision_security("/test/path", user_info_matching, mock_async_client)
+
+    assert exception.value.status_code == HTTPStatus.FORBIDDEN
+
+    opa_input = {"input": {**user_info_matching, "resource": "/test/path", "method": "POST"}}
+    mock_async_client.post.assert_called_with("https://opa_url.test", json=opa_input)
+
+
+@pytest.mark.asyncio
+async def test_opa_graphql_decision_user_not_allowed_autoerror_false(make_mock_async_client):
+    mock_async_client = make_mock_async_client({"result": False, "decision_id": "hoi"})
+    opa_decision_security = opa_graphql_decision(
+        "https://opa_url.test",
+        None,
+        auto_error=False,
+    )
 
     result = await opa_decision_security("/test/path", user_info_matching, mock_async_client)
 
@@ -38,7 +61,7 @@ async def test_opa_graphql_decision_user_not_allowed(make_mock_async_client):
 @pytest.mark.asyncio
 async def test_opa_graphql_decision_user_allowed(make_mock_async_client):
     mock_async_client = make_mock_async_client({"result": True, "decision_id": "hoi"})
-    opa_decision_security = opa_graphql_decision("https://opa_url.test", None)
+    opa_decision_security = opa_graphql_decision("https://opa_url.test", None, auto_error=False)
 
     result = await opa_decision_security("/test/path", user_info_matching, mock_async_client)
 
