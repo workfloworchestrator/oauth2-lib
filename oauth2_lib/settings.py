@@ -12,7 +12,7 @@
 # limitations under the License.
 
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, Field
 
 
 class Oauth2LibSettings(BaseSettings):
@@ -21,7 +21,9 @@ class Oauth2LibSettings(BaseSettings):
     ENVIRONMENT: str = "local"
     SERVICE_NAME: str = ""
     MUTATIONS_ENABLED: bool = False
-    ENVIRONMENT_IGNORE_MUTATION_DISABLED: list[str] = ["development", "pre-prod"]
+    ENVIRONMENT_IGNORE_MUTATION_DISABLED: list[str] = Field(
+        default_factory=list, description="Environments for which to allow unauthenticated mutations"
+    )
     OAUTH2_ACTIVE: bool = False
 
 
