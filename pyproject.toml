@@ -35,7 +35,7 @@ requires = [
     "fastapi>=0.90.1",
     "httpx[http2]==0.23.0",
     "authlib==1.0.1",
-    "pydantic>=1.8.0,<2.0.0",
+    "pydantic",
     "strawberry-graphql>=0.171.1",
     "asyncstdlib",
 ]
