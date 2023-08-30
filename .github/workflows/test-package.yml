@@ -28,6 +28,7 @@ jobs:
           pip install flit
           flit install --deps develop
           pip install -U "pydantic==${{ matrix.pydantic-version }}"
+          pip install pydantic_settings || true
       - name: Lint
         run: |
           black . --check
