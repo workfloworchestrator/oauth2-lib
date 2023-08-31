@@ -12,7 +12,12 @@
 # limitations under the License.
 
 
-from pydantic import BaseSettings, Field
+from pydantic import VERSION, Field
+
+if VERSION >= "2.0":
+    from pydantic_settings import BaseSettings
+else:
+    from pydantic import BaseSettings  # type: ignore[no-redef]
 
 
 class Oauth2LibSettings(BaseSettings):
