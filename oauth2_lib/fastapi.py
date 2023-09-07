@@ -209,28 +209,29 @@ class OIDCUser(HTTPBearer):
             OIDCUserModel object.
 
         """
-        async_request = AsyncClient(http1=True)
-        if self.enabled:
+        if not self.enabled:
+            return None
+
+        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
             await self.check_openid_config(async_request)
 
             if not token:
                 credentials = await super().__call__(request)
-                token = credentials.credentials if credentials else None
+                if not credentials:
+                    return None
+                token = credentials.credentials
 
-            if token:
-                user_info = await self.introspect_token(async_request, token)
+            user_info = await self.introspect_token(async_request, token)
 
-                if "active" not in user_info:
-                    logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
-                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
-                if not user_info.get("active", False):
-                    logger.info("User is not active", url=request.url, user_info=user_info)
-                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
+            if "active" not in user_info:
+                logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
+                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
+            if not user_info.get("active", False):
+                logger.info("User is not active", url=request.url, user_info=user_info)
+                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
 
-                logger.debug("OIDCUserModel object.", user_info=user_info)
-                return user_info
-
-        return None
+            logger.debug("OIDCUserModel object.", user_info=user_info)
+            return user_info
 
     async def check_openid_config(self, async_request: AsyncClient) -> None:
         """Check of openid config is loaded and load if not."""
