@@ -108,10 +108,9 @@ class AsyncAuthMixin:
         """
         if self._token and not force:
             return
-        if force:
-            self._token = await self._oauth_client.fetch_access_token()
-        else:
-            self._token = await self._oauth_client.fetch_access_token()
+
+        logger.debug("Acquiring new access token", force=force)
+        self._token = await self._oauth_client.fetch_access_token()
 
     def request(  # type:ignore
         self,
