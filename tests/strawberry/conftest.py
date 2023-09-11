@@ -5,7 +5,7 @@ from starlette.testclient import TestClient
 from strawberry.fastapi import GraphQLRouter
 
 from oauth2_lib.fastapi import opa_graphql_decision
-from oauth2_lib.graphql_authentication import (
+from oauth2_lib.strawberry import (
     OauthContext,
     authenticated_federated_field,
     authenticated_field,
