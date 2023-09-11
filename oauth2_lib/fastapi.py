@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+import ssl
 from collections.abc import AsyncGenerator, Awaitable, Mapping
 from http import HTTPStatus
 from json import JSONDecodeError
@@ -26,6 +27,8 @@ from starlette.requests import ClientDisconnect
 from structlog import get_logger
 
 logger = get_logger(__name__)
+
+HTTPX_SSL_CONTEXT = ssl.create_default_context()  # https://github.com/encode/httpx/issues/838
 
 
 class OIDCUserModel(dict):
@@ -133,8 +136,8 @@ class OIDCUserModel(dict):
         return self.get("surf-crm-id", "")
 
 
-async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(http1=True) as client:
+async def _make_async_client() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as client:
         yield client
 
 
@@ -206,28 +209,29 @@ class OIDCUser(HTTPBearer):
             OIDCUserModel object.
 
         """
-        async_request = AsyncClient(http1=True)
-        if self.enabled:
+        if not self.enabled:
+            return None
+
+        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
             await self.check_openid_config(async_request)
 
             if not token:
                 credentials = await super().__call__(request)
-                token = credentials.credentials if credentials else None
+                if not credentials:
+                    return None
+                token = credentials.credentials
 
-            if token:
-                user_info = await self.introspect_token(async_request, token)
+            user_info = await self.introspect_token(async_request, token)
 
-                if "active" not in user_info:
-                    logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
-                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
-                if not user_info.get("active", False):
-                    logger.info("User is not active", url=request.url, user_info=user_info)
-                    raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
+            if "active" not in user_info:
+                logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
+                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
+            if not user_info.get("active", False):
+                logger.info("User is not active", url=request.url, user_info=user_info)
+                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
 
-                logger.debug("OIDCUserModel object.", user_info=user_info)
-                return user_info
-
-        return None
+            logger.debug("OIDCUserModel object.", user_info=user_info)
+            return user_info
 
     async def check_openid_config(self, async_request: AsyncClient) -> None:
         """Check of openid config is loaded and load if not."""
@@ -319,7 +323,7 @@ def opa_decision(
     async def _opa_decision(
         request: Request,
         user_info: OIDCUserModel = Depends(oidc_security),
-        async_request: AsyncClient = Depends(async_client),
+        async_request: AsyncClient = Depends(_make_async_client),
     ) -> Union[bool, None]:
         """Check OIDCUserModel against the OPA policy.
 
@@ -405,8 +409,9 @@ def opa_graphql_decision(
             }
         }
 
-        client_request = async_request if async_request else async_request_1
-        client_request = client_request if client_request else AsyncClient(http1=True)
+        client_request = async_request or async_request_1
+        if not client_request:
+            client_request = AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT)
 
         decision = await _get_decision(client_request, opa_url, opa_input)
 
