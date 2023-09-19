@@ -43,8 +43,8 @@ class OauthContext(BaseContext):
             logger.debug("Can't retrieve OIDCUserModel without a starlette Request", request_type=type(self.request))
             return None
 
-        if not oauth2lib_settings.OAUTH2_ACTIVE:
-            logger.debug("Not retrieving OIDCUserModel because OAUTH2_ACTIVE=False")
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.AUTHENTICATION_ACTIVE):
+            logger.debug("Not retrieving OIDCUserModel because OAUTH2_ACTIVE=False and/or AUTHENTICATION_ACTIVE=False")
             return None
 
         try:
@@ -89,6 +89,7 @@ def skip_mutation_auth_checks() -> bool:
     logger.debug(
         "Mutations are disabled",
         OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+        AUTHORIZATION_ACTIVE=oauth2lib_settings.AUTHORIZATION_ACTIVE,
         MUTATIONS_ENABLED=oauth2lib_settings.MUTATIONS_ENABLED,
         is_exception=is_exception,
     )
@@ -119,7 +120,7 @@ class IsAuthenticatedForQuery(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        if not oauth2lib_settings.OAUTH2_ACTIVE:
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.AUTHENTICATION_ACTIVE):
             return True
 
         return await is_authenticated(info)
@@ -129,7 +130,11 @@ class IsAuthenticatedForMutation(BasePermission):
     message = "User is not authenticated"
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
+        mutations_active = (
+            oauth2lib_settings.OAUTH2_ACTIVE
+            and oauth2lib_settings.AUTHENTICATION_ACTIVE
+            and oauth2lib_settings.MUTATIONS_ENABLED
+        )
         if not mutations_active:
             return skip_mutation_auth_checks()
 
@@ -138,7 +143,7 @@ class IsAuthenticatedForMutation(BasePermission):
 
 class IsAuthorizedForQuery(BasePermission):
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        if not oauth2lib_settings.OAUTH2_ACTIVE:
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.AUTHORIZATION_ACTIVE):
             return True
 
         path = get_query_path(info)
@@ -151,7 +156,11 @@ class IsAuthorizedForQuery(BasePermission):
 
 class IsAuthorizedForMutation(BasePermission):
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
+        mutations_active = (
+            oauth2lib_settings.OAUTH2_ACTIVE
+            and oauth2lib_settings.AUTHORIZATION_ACTIVE
+            and oauth2lib_settings.MUTATIONS_ENABLED
+        )
         if not mutations_active:
             return skip_mutation_auth_checks()
 
