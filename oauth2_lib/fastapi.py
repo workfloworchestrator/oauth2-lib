@@ -15,7 +15,7 @@ import ssl
 from collections.abc import AsyncGenerator, Awaitable, Mapping
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, Callable, Union, cast
+from typing import Any, Callable, Optional, Union, cast
 
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import Depends
@@ -146,7 +146,8 @@ class OIDCConfig(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
     userinfo_endpoint: str
-    introspect_endpoint: str
+    introspect_endpoint: Optional[str]
+    introspection_endpoint: Optional[str]
     jwks_uri: str
     response_types_supported: list[str]
     response_modes_supported: list[str]
@@ -255,9 +256,10 @@ class OIDCUser(HTTPBearer):
         await self.check_openid_config(async_request)
         assert self.openid_config
 
+        endpoint = self.openid_config.introspect_endpoint or self.openid_config.introspection_endpoint
         response = await async_request.post(
-            self.openid_config.introspect_endpoint,
-            params={"token": token},
+            endpoint,
+            data={"token": token},
             auth=BasicAuth(self.resource_server_id, self.resource_server_secret),
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
