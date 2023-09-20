@@ -30,8 +30,7 @@ class Oauth2LibSettings(BaseSettings):
         default_factory=list, description="Environments for which to allow unauthenticated mutations"
     )
     OAUTH2_ACTIVE: bool = False
-    AUTHENTICATION_ACTIVE: bool = True
-    AUTHORIZATION_ACTIVE: bool = True
+    OAUTH2_AUTHORIZATION_ACTIVE: bool = True
 
 
 oauth2lib_settings = Oauth2LibSettings()

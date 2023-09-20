@@ -26,6 +26,8 @@ from pydantic import BaseModel
 from starlette.requests import ClientDisconnect
 from structlog import get_logger
 
+from oauth2_lib.settings import oauth2lib_settings
+
 logger = get_logger(__name__)
 
 HTTPX_SSL_CONTEXT = ssl.create_default_context()  # https://github.com/encode/httpx/issues/838
@@ -179,14 +181,12 @@ class OIDCUser(HTTPBearer):
     openid_url: str
     resource_server_id: str
     resource_server_secret: str
-    enabled: bool
 
     def __init__(
         self,
         openid_url: str,
         resource_server_id: str,
         resource_server_secret: str,
-        enabled: bool = True,
         auto_error: bool = True,
         scheme_name: Union[str, None] = None,
     ):
@@ -194,7 +194,6 @@ class OIDCUser(HTTPBearer):
         self.openid_url = openid_url
         self.resource_server_id = resource_server_id
         self.resource_server_secret = resource_server_secret
-        self.enabled = enabled
         self.scheme_name = scheme_name or self.__class__.__name__
 
     async def __call__(self, request: Request, token: Union[str, None] = None) -> Union[OIDCUserModel, None]:  # type: ignore
@@ -210,7 +209,7 @@ class OIDCUser(HTTPBearer):
             OIDCUserModel object.
 
         """
-        if not self.enabled:
+        if not oauth2lib_settings.OAUTH2_ACTIVE:
             return None
 
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
@@ -302,6 +301,7 @@ async def _get_decision(async_request: AsyncClient, opa_url: str, opa_input: dic
 
 def _evaluate_decision(decision: OPAResult, auto_error: bool, **context: dict[str, Any]) -> bool:
     did = decision.decision_id
+
     if decision.result:
         logger.debug("User is authorized to access the resource", decision_id=did, **context)
         return True
@@ -319,7 +319,6 @@ def _evaluate_decision(decision: OPAResult, auto_error: bool, **context: dict[st
 def opa_decision(
     opa_url: str,
     oidc_security: OIDCUser,
-    enabled: bool = True,
     auto_error: bool = True,
     opa_kwargs: Union[Mapping[str, str], None] = None,
 ) -> Callable[[Request, OIDCUserModel, AsyncClient], Awaitable[Union[bool, None]]]:
@@ -339,7 +338,7 @@ def opa_decision(
             async_request: The httpx client.
         """
 
-        if not enabled:
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
         try:
@@ -380,7 +379,6 @@ def opa_decision(
 def opa_graphql_decision(
     opa_url: str,
     _oidc_security: OIDCUser,
-    enabled: bool = True,
     auto_error: bool = False,  # By default don't raise HTTP 403 because partial results are preferred
     opa_kwargs: Union[Mapping[str, str], None] = None,
     async_request: Union[AsyncClient, None] = None,
@@ -400,7 +398,7 @@ def opa_graphql_decision(
             oidc_user: The OIDCUserModel object that will be checked
             async_request_1: The Async client
         """
-        if not enabled:
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
         opa_input = {
