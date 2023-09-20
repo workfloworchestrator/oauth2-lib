@@ -186,6 +186,7 @@ async def test_introspect_token(make_mock_async_client):
         discovery["introspect_endpoint"],
         auth=MockBasicAuth("id", "secret"),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
+        params={"token": access_token},
         data={"token": access_token},
     )
 
@@ -215,6 +216,7 @@ async def test_introspect_exception():
         discovery["introspect_endpoint"],
         auth=MockBasicAuth("id", "secret"),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
+        params={"token": access_token},
         data={"token": access_token},
     )
 

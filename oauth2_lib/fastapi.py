@@ -256,9 +256,10 @@ class OIDCUser(HTTPBearer):
         await self.check_openid_config(async_request)
         assert self.openid_config
 
-        endpoint = self.openid_config.introspect_endpoint or self.openid_config.introspection_endpoint
+        endpoint = self.openid_config.introspect_endpoint or self.openid_config.introspection_endpoint or ""
         response = await async_request.post(
             endpoint,
+            params={"token": token},
             data={"token": token},
             auth=BasicAuth(self.resource_server_id, self.resource_server_secret),
             headers={"Content-Type": "application/x-www-form-urlencoded"},
