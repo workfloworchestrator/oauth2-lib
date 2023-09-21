@@ -121,6 +121,11 @@ class IsAuthenticatedForQuery(BasePermission):
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not oauth2lib_settings.OAUTH2_ACTIVE:
+            logger.debug(
+                "Authentication disabled",
+                OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+                OAUTH2_AUTHORIZATION_ACTIVE=oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE,
+            )
             return True
 
         return await is_authenticated(info)
@@ -140,6 +145,11 @@ class IsAuthenticatedForMutation(BasePermission):
 class IsAuthorizedForQuery(BasePermission):
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
+            logger.debug(
+                "Authorization disabled",
+                OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+                OAUTH2_AUTHORIZATION_ACTIVE=oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE,
+            )
             return True
 
         path = get_query_path(info)
