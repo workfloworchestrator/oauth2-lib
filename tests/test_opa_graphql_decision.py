@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from oauth2_lib.fastapi import OIDCUser, opa_graphql_decision
+from oauth2_lib.settings import oauth2lib_settings
 from tests.test_fastapi import user_info_matching
 
 
@@ -13,9 +14,11 @@ async def test_opa_graphql_decision_auto_error():
     def mock_user_info():
         return {}
 
-    opa_decision_security = opa_graphql_decision("https://opa_url.test", cast(OIDCUser, mock_user_info), enabled=False)
+    oauth2lib_settings.OAUTH2_ACTIVE = False
+    opa_decision_security = opa_graphql_decision("https://opa_url.test", cast(OIDCUser, mock_user_info))
 
     assert await opa_decision_security("", None) is None  # type:ignore
+    oauth2lib_settings.OAUTH2_ACTIVE = True
 
 
 @pytest.mark.asyncio

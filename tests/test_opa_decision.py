@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.websockets import WebSocket
 
 from oauth2_lib.fastapi import OIDCUser, opa_decision
+from oauth2_lib.settings import oauth2lib_settings
 from tests.test_fastapi import user_info_matching
 
 
@@ -15,11 +16,13 @@ async def test_opa_decision_auto_error():
     def mock_user_info():
         return {}
 
-    opa_decision_security = opa_decision("https://opa_url.test", cast(OIDCUser, mock_user_info), enabled=False)
+    oauth2lib_settings.OAUTH2_ACTIVE = False
+    opa_decision_security = opa_decision("https://opa_url.test", cast(OIDCUser, mock_user_info))
 
     mock_request = mock.MagicMock(spec=Request)
 
     assert await opa_decision_security(mock_request, {}, None) is None  # type:ignore
+    oauth2lib_settings.OAUTH2_ACTIVE = True
 
 
 @pytest.fixture

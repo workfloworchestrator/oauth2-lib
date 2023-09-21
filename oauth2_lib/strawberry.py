@@ -89,6 +89,7 @@ def skip_mutation_auth_checks() -> bool:
     logger.debug(
         "Mutations are disabled",
         OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+        OAUTH2_AUTHORIZATION_ACTIVE=oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE,
         MUTATIONS_ENABLED=oauth2lib_settings.MUTATIONS_ENABLED,
         is_exception=is_exception,
     )
@@ -120,6 +121,11 @@ class IsAuthenticatedForQuery(BasePermission):
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not oauth2lib_settings.OAUTH2_ACTIVE:
+            logger.debug(
+                "Authentication disabled",
+                OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+                OAUTH2_AUTHORIZATION_ACTIVE=oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE,
+            )
             return True
 
         return await is_authenticated(info)
@@ -138,7 +144,12 @@ class IsAuthenticatedForMutation(BasePermission):
 
 class IsAuthorizedForQuery(BasePermission):
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        if not oauth2lib_settings.OAUTH2_ACTIVE:
+        if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
+            logger.debug(
+                "Authorization disabled",
+                OAUTH2_ACTIVE=oauth2lib_settings.OAUTH2_ACTIVE,
+                OAUTH2_AUTHORIZATION_ACTIVE=oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE,
+            )
             return True
 
         path = get_query_path(info)
@@ -151,7 +162,11 @@ class IsAuthorizedForQuery(BasePermission):
 
 class IsAuthorizedForMutation(BasePermission):
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
-        mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
+        mutations_active = (
+            oauth2lib_settings.OAUTH2_ACTIVE
+            and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE
+            and oauth2lib_settings.MUTATIONS_ENABLED
+        )
         if not mutations_active:
             return skip_mutation_auth_checks()
 

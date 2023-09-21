@@ -29,7 +29,8 @@ class Oauth2LibSettings(BaseSettings):
     ENVIRONMENT_IGNORE_MUTATION_DISABLED: list[str] = Field(
         default_factory=list, description="Environments for which to allow unauthenticated mutations"
     )
-    OAUTH2_ACTIVE: bool = False
+    OAUTH2_ACTIVE: bool = True
+    OAUTH2_AUTHORIZATION_ACTIVE: bool = True
 
 
 oauth2lib_settings = Oauth2LibSettings()

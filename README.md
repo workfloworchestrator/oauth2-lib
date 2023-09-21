@@ -25,6 +25,8 @@ To install all development dependencies
 flit install --deps develop --symlink
 ```
 
+for pydantic V2 you also need to install pydantic_settings: `pip install pydantic_settings`.
+
 This way all requirements are installed for testing and development.
 
 ## Development
