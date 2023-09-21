@@ -6,6 +6,7 @@ from fastapi.requests import Request
 from httpx import AsyncClient, BasicAuth, Response
 
 from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel
+from oauth2_lib.settings import oauth2lib_settings
 
 discovery = {
     "issuer": "https://connect.test.surfconext.nl",
@@ -312,13 +313,15 @@ async def test_OIDCUser_disabled():
     async def mock_introspect_token(client, token):
         return {"wrong_data": "wrong_data"}
 
-    openid_bearer = OIDCUser("openid_url", "id", "secret", enabled=False)
+    oauth2lib_settings.OAUTH2_ACTIVE = False
+    openid_bearer = OIDCUser("openid_url", "id", "secret")
     openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
     openid_bearer.introspect_token = mock_introspect_token  # type:ignore
 
     result = await openid_bearer(mock_request)
 
     assert result is None
+    oauth2lib_settings.OAUTH2_ACTIVE = True
 
 
 def test_OIDCUserModel():
