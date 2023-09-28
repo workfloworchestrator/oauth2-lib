@@ -14,7 +14,6 @@ discovery = {
     "token_endpoint": "https://connect.test.surfconext.nl/oidc/token",
     "userinfo_endpoint": "https://connect.test.surfconext.nl/oidc/userinfo",
     "introspect_endpoint": "https://connect.test.surfconext.nl/oidc/introspect",
-    "introspection_endpoint": "",
     "jwks_uri": "https://connect.test.surfconext.nl/oidc/certs",
     "response_types_supported": [
         "code",

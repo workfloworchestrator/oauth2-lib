@@ -148,8 +148,8 @@ class OIDCConfig(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
     userinfo_endpoint: str
-    introspect_endpoint: Optional[str]
-    introspection_endpoint: Optional[str]
+    introspect_endpoint: Optional[str] = None
+    introspection_endpoint: Optional[str] = None
     jwks_uri: str
     response_types_supported: list[str]
     response_modes_supported: list[str]
