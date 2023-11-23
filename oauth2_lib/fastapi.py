@@ -85,15 +85,15 @@ class OIDCUserModel(dict):
 
     @property
     def display_name(self) -> str:
-        return self.get("display_name", "")
+        return self.get("display_name", "")  # type: ignore
 
     @property
     def principal_name(self) -> str:
-        return self.get("eduperson_principal_name", "")
+        return self.get("eduperson_principal_name", "")  # type: ignore
 
     @property
     def memberships(self) -> list[str]:
-        return self.get("edumember_is_member_of", [])
+        return self.get("edumember_is_member_of", [])  # type: ignore
 
     @property
     def teams(self) -> set[str]:
@@ -103,7 +103,7 @@ class OIDCUserModel(dict):
 
     @property
     def entitlements(self) -> list[str]:
-        return self.get("eduperson_entitlement", [])
+        return self.get("eduperson_entitlement", [])  # type: ignore
 
     @property
     def roles(self) -> set[str]:
@@ -131,11 +131,11 @@ class OIDCUserModel(dict):
 
     @property
     def is_resource_server(self) -> bool:
-        return self.get("is_resource_server", False)
+        return self.get("is_resource_server", False)  # type: ignore
 
     @property
     def surf_crm_id(self) -> str:
-        return self.get("surf-crm-id", "")
+        return self.get("surf-crm-id", "")  # type: ignore
 
 
 async def _make_async_client() -> AsyncGenerator[AsyncClient, None]:
