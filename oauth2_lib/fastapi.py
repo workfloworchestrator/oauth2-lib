@@ -348,7 +348,7 @@ def opa_decision(
         # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
         # Suppress AttributeError in case of websocket request, it doesn't have .json
         except (JSONDecodeError, TypeError, ClientDisconnect, AttributeError, RuntimeError) as e:
-            if not (isinstance(e, RuntimeError) and "Stream consumed" in str(e)):
+            if isinstance(e, RuntimeError) and "Stream consumed" not in str(e):
                 # RuntimeError is a very broad error class. We only want to catch and ignore a stream
                 # consumed runtime error. In other cases, reraise the error.
                 raise e
