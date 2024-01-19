@@ -1,4 +1,4 @@
-# Copyright 2019-2023 SURF.
+# Copyright 2019-2024 SURF.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -215,13 +215,15 @@ class OIDCUser(HTTPBearer):
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
             await self.check_openid_config(async_request)
 
-            if not token:
+            if token is None:
                 credentials = await super().__call__(request)
                 if not credentials:
                     return None
-                token = credentials.credentials
+                token_or_credentials = credentials.credentials
+            else:
+                token_or_credentials = token
 
-            user_info = await self.introspect_token(async_request, token)
+            user_info = await self.introspect_token(async_request, token_or_credentials)
 
             if "active" not in user_info:
                 logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
