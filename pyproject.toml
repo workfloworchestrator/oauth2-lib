@@ -25,6 +25,7 @@ classifiers = [
     "Intended Audience :: Telecommunications Industry",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.9",
@@ -33,14 +34,14 @@ requires = [
     "requests>=2.19.0",
     "structlog>=20.2.0",
     "fastapi>=0.90.1",
-    "httpx[http2]==0.23.0",
+    "httpx[http2]>=0.23.0,<0.27.0",
     "authlib==1.0.1",
     "pydantic",
     "strawberry-graphql>=0.171.1",
     "asyncstdlib",
 ]
 description-file = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.13"
 
 [tool.flit.metadata.urls]
 Documentation = "https://workfloworchestrator.org/"
