@@ -62,6 +62,7 @@ jobs:
           name: reports
           path: reports
       - run: pip install coverage[toml]
+      - run: ls -la reports
       - run: coverage combine reports
       - run: coverage report
       - name: "Upload coverage to Codecov"
