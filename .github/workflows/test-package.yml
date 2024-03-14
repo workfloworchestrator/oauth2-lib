@@ -67,6 +67,7 @@ jobs:
       - run: ls -la reports
       - run: coverage combine reports
       - run: coverage report
+      - run: coverage xml
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v3
         with:
