@@ -52,7 +52,6 @@ test = [
     "black",
     "ruff",
     "mypy",
-    "opentelemetry-instrumentation-urllib3",
     "pygments",
     "pytest",
     "pytest-asyncio",

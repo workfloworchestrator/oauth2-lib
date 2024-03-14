@@ -42,7 +42,7 @@ jobs:
         run: |
           pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc
         env:
-          COVERAGE_FILE: reports/.coverage.${{ matrix.python-version }}-${{ matrix.python-version }}
+          COVERAGE_FILE: reports/.coverage.${{ matrix.python-version }}-${{ matrix.pydantic-version }}
       - name: Upload pytest test results
         uses: actions/upload-artifact@v2
         with:
