@@ -15,7 +15,6 @@ jobs:
         python-version: ['3.9', '3.10', '3.11', '3.12']
         pydantic-version: ['1.*', '2.*']
       fail-fast: false
-
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -42,9 +41,31 @@ jobs:
       - name: Test with pytest
         run: |
           pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --junitxml=report-pytest-${{ matrix.python-version }}.xml
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: reports/report-pytest-${{ matrix.python-version }}.xml
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ matrix.pydantic-version == '2.*' }} && ${{ always() }}
+
+  coverage-combine:
+    needs: [build]
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Get coverage files
+        uses: actions/download-artifact@v3
+        with:
+          name: reports
+          path: reports
+      - run: pip install coverage[toml]
+      - run: coverage combine reports
+      - run: coverage report
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-          files: ./report-pytest-${{ matrix.python-version }}.xml
+          files: ./coverage.xml
