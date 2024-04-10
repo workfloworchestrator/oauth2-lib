@@ -31,6 +31,12 @@ class Oauth2LibSettings(BaseSettings):
     )
     OAUTH2_ACTIVE: bool = True
     OAUTH2_AUTHORIZATION_ACTIVE: bool = True
+    OAUTH2_RESOURCE_SERVER_ID: str = ""
+    OAUTH2_RESOURCE_SERVER_SECRET: str = ""
+    OAUTH2_TOKEN_URL: str = ""
+    OIDC_BASE_URL: str = ""
+    OIDC_CONF_URL: str = ""
+    OPA_URL: str = ""
 
 
 oauth2lib_settings = Oauth2LibSettings()

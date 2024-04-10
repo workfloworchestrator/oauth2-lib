@@ -10,20 +10,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import re
 import ssl
-from collections.abc import AsyncGenerator, Awaitable, Mapping
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Mapping
 from http import HTTPStatus
 from json import JSONDecodeError
 from typing import Any, Callable, Optional, Union, cast
 
-from fastapi.exceptions import HTTPException
-from fastapi.param_functions import Depends
+from fastapi import Depends, HTTPException
 from fastapi.requests import Request
 from fastapi.security.http import HTTPBearer
-from httpx import AsyncClient, BasicAuth, NetworkError
+from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
-from starlette.requests import ClientDisconnect
+from starlette.requests import ClientDisconnect, HTTPConnection
+from starlette.websockets import WebSocket
 from structlog import get_logger
 
 from oauth2_lib.settings import oauth2lib_settings
@@ -71,79 +71,23 @@ class OIDCUserModel(dict):
                 return self.get(key)
             raise error
 
-    """
-    Below this line are SURFnet specific properties that are used often in code to either display or check on.
-    """
-
     @property
     def user_name(self) -> str:
-        if "user_name" in self.keys():
-            return cast(str, self["user_name"])
-        if "unspecified_id" in self.keys():
-            return cast(str, self["unspecified_id"])
         return ""
 
-    @property
-    def display_name(self) -> str:
-        return self.get("display_name", "")  # type: ignore
 
-    @property
-    def principal_name(self) -> str:
-        return self.get("eduperson_principal_name", "")  # type: ignore
-
-    @property
-    def memberships(self) -> list[str]:
-        return self.get("edumember_is_member_of", [])  # type: ignore
-
-    @property
-    def teams(self) -> set[str]:
-        prefix = "urn:collab:group:surfteams.nl:nl:surfnet:diensten:"
-        length = len(prefix)
-        return {urn[length:] for urn in self.memberships if urn.startswith(prefix)}
-
-    @property
-    def entitlements(self) -> list[str]:
-        return self.get("eduperson_entitlement", [])  # type: ignore
-
-    @property
-    def roles(self) -> set[str]:
-        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:role:"
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def organization_codes(self) -> set[str]:
-        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationCode:"
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def organization_guids(self) -> set[str]:
-        prefix = "urn:mace:surfnet.nl:surfnet.nl:sab:organizationGUID:"
-        length = len(prefix)
-        return {urn[length:] for urn in self.entitlements if urn.startswith(prefix)}
-
-    @property
-    def scopes(self) -> set[str]:
-        if isinstance(self.get("scope"), list):
-            return set(self.get("scope"))  # type: ignore
-        return set(re.split("[ ,]", self.get("scope", "")))
-
-    @property
-    def is_resource_server(self) -> bool:
-        return self.get("is_resource_server", False)  # type: ignore
-
-    @property
-    def surf_crm_id(self) -> str:
-        return self.get("surf-crm-id", "")  # type: ignore
-
-
-async def _make_async_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as client:
-        yield client
+RequestPath = str
+AuthenticationFunc = Callable[[HTTPConnection, Optional[str]], Awaitable[Optional[dict]]]
+AuthorizationFunc = Callable[[HTTPConnection, OIDCUserModel, Any], Awaitable[bool]]
+GraphqlAuthorizationFunc = Callable[[RequestPath, OIDCUserModel], Awaitable[Optional[bool]]]
 
 
 class OIDCConfig(BaseModel):
+    """Holds OpenID Connect provider configuration.
+
+    Details include endpoints, supported features, and various supported specifications.
+    """
+
     issuer: str
     authorization_endpoint: str
     token_endpoint: str
@@ -165,44 +109,84 @@ class OIDCConfig(BaseModel):
 
 
 class OPAResult(BaseModel):
+    """Represents an OPA decision result.
+
+    Contains the decision outcome and an associated decision ID.
+    """
+
     result: bool = False
     decision_id: str
 
 
-class OIDCUser(HTTPBearer):
-    """OIDCUser class extends the HTTPBearer class to do extra verification.
+class Authentication(ABC):
+    """Abstract base for authentication mechanisms.
 
-    The class will act as follows:
-        1. Validate the Credentials at SURFconext by calling the UserInfo endpoint
-        2. When receiving an active token it will enrich the response through the database roles
+    Requires an async authenticate method implementation.
     """
 
-    openid_config: Union[OIDCConfig, None] = None
-    openid_url: str
-    resource_server_id: str
-    resource_server_secret: str
+    @abstractmethod
+    async def authenticate(self, request: HTTPConnection, token: Optional[str] = None) -> Optional[dict]:
+        """Authenticate the user."""
+        pass
+
+
+class IdTokenExtractor(ABC):
+    """Abstract base for ID token extraction.
+
+    Must implement an async method to extract the token from requests.
+    """
+
+    @abstractmethod
+    async def extract(self, request: Request) -> Optional[str]:
+        pass
+
+
+class HttpBearerExtractor(IdTokenExtractor):
+    """Extracts bearer tokens using FastAPI's HTTPBearer.
+
+    Specifically designed for HTTP Authorization header token extraction.
+    """
+
+    async def extract(self, request: Request) -> Optional[str]:
+        http_bearer = HTTPBearer(auto_error=True)
+        credential = await http_bearer(request)
+
+        return credential.credentials if credential else None
+
+
+class OIDCAuth(Authentication):
+    """Implements OIDC authentication.
+
+    Manages token extraction and user information retrieval based on OIDC standards.
+    """
 
     def __init__(
         self,
         openid_url: str,
+        openid_config_url: str,
         resource_server_id: str,
         resource_server_secret: str,
-        auto_error: bool = True,
-        scheme_name: Union[str, None] = None,
+        oidc_user_model_cls: type[OIDCUserModel],
+        id_token_extractor: Optional[IdTokenExtractor] = None,
     ):
-        super().__init__(auto_error=auto_error)
+        if not id_token_extractor:
+            self.id_token_extractor = HttpBearerExtractor()
+
         self.openid_url = openid_url
+        self.openid_config_url = openid_config_url
         self.resource_server_id = resource_server_id
         self.resource_server_secret = resource_server_secret
-        self.scheme_name = scheme_name or self.__class__.__name__
+        self.user_model_cls = oidc_user_model_cls
 
-    async def __call__(self, request: Request, token: Union[str, None] = None) -> Union[OIDCUserModel, None]:  # type: ignore
+        self.openid_config: Optional[OIDCConfig] = None
+
+    async def authenticate(self, request: HTTPConnection, token: Optional[str] = None) -> Optional[OIDCUserModel]:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
 
         Args:
-            request: Starlette request method.
+            request: Starlette request/websocket method.
             token: Optional value to directly pass a token.
 
         Returns:
@@ -212,139 +196,155 @@ class OIDCUser(HTTPBearer):
         if not oauth2lib_settings.OAUTH2_ACTIVE:
             return None
 
-        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
-            await self.check_openid_config(async_request)
+        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
+            await self.check_openid_config(async_client)
 
-            if token is None:
-                credentials = await super().__call__(request)
-                if not credentials:
-                    return None
-                token_or_credentials = credentials.credentials
+            # Handle WebSocket requests separately only to check for token presence.
+            if isinstance(request, WebSocket):
+                if token is None:
+                    raise HTTPException(
+                        status_code=HTTPStatus.FORBIDDEN,
+                        detail="Not authenticated",
+                    )
+                token_or_extracted_id_token = token
             else:
-                token_or_credentials = token
+                request = cast(Request, request)
+                if token is None:
+                    extracted_id_token = await self.id_token_extractor.extract(request)
+                    if not extracted_id_token:
+                        return None
+                    token_or_extracted_id_token = extracted_id_token
+                elif await self.is_bypassable_request(request):
+                    return None
+                else:
+                    token_or_extracted_id_token = token
 
-            user_info = await self.introspect_token(async_request, token_or_credentials)
-
-            if "active" not in user_info:
-                logger.error("Token doesn't have the mandatory 'active' key, probably caused by a caching problem")
-                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Missing active key")
-            if not user_info.get("active", False):
-                logger.info("User is not active", url=request.url, user_info=user_info)
-                raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="User is not active")
-
+            user_info: OIDCUserModel = await self.userinfo(async_client, token_or_extracted_id_token)
             logger.debug("OIDCUserModel object.", user_info=user_info)
             return user_info
 
-    async def check_openid_config(self, async_request: AsyncClient) -> None:
+    @staticmethod
+    async def is_bypassable_request(request: Request) -> bool:
+        """By default no request is bypassable."""
+        return False
+
+    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
+        """Get the userinfo from the openid server.
+
+        :param AsyncClient async_request: The async request
+        :param str token: the access_token
+        :return: OIDCUserModel dict: OIDC user model from openid server
+
+        """
+        raise NotImplementedError()
+
+    async def check_openid_config(self, async_client: AsyncClient) -> None:
         """Check of openid config is loaded and load if not."""
         if self.openid_config is not None:
             return
 
-        response = await async_request.get(self.openid_url + "/.well-known/openid-configuration")
+        response = await async_client.get(self.openid_config_url)
+        if response.status_code != HTTPStatus.OK:
+            raise HTTPException(
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                detail=f"Could not load openid config from {self.openid_config_url}",
+            )
         self.openid_config = OIDCConfig.parse_obj(response.json())
 
-    async def introspect_token(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
-        """Introspect the access token to retrieve the user info.
 
-        Args:
-            async_request: The async request
-            token: the access_token
+oidc_instance = OIDCAuth(
+    openid_url=oauth2lib_settings.OIDC_BASE_URL,
+    openid_config_url=oauth2lib_settings.OIDC_CONF_URL,  # Corrected parameter name
+    resource_server_id=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_ID,
+    resource_server_secret=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_SECRET,
+    oidc_user_model_cls=OIDCUserModel,
+)
 
-        Returns:
-            OIDCUserModel from openid server
 
-        """
-        await self.check_openid_config(async_request)
-        assert self.openid_config
+class Authorization(ABC):
+    """Defines the authorization logic interface.
 
-        endpoint = self.openid_config.introspect_endpoint or self.openid_config.introspection_endpoint or ""
-        response = await async_request.post(
-            endpoint,
-            params={"token": token},
-            data={"token": token},
-            auth=BasicAuth(self.resource_server_id, self.resource_server_secret),
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+    Implementations must provide an async method to authorize based on request and user info.
+    """
+
+    @abstractmethod
+    async def authorize(
+        self, request: HTTPConnection, user: OIDCUserModel = Depends(oidc_instance.authenticate)
+    ) -> Optional[bool]:
+        pass
+
+
+class GraphqlAuthorization(ABC):
+    """Defines the graphql authorization logic interface.
+
+    Implementations must provide an async method to authorize based on request and user info.
+    """
+
+    @abstractmethod
+    async def authorize(
+        self, request: RequestPath, user: OIDCUserModel = Depends(oidc_instance.authenticate)
+    ) -> Optional[bool]:
+        pass
+
+
+class OPAMixin:
+    """Base for OPA-based authorization logic.
+
+    Supports getting and evaluating OPA policy decisions.
+    """
+
+    def __init__(self, opa_url: str, auto_error: bool = True, opa_kwargs: Union[Mapping[str, Any], None] = None):
+        self.opa_url = opa_url
+        self.auto_error = auto_error
+        self.opa_kwargs = opa_kwargs
+
+    async def get_decision(self, async_client: AsyncClient, opa_input: dict) -> OPAResult:
+        logger.debug("Posting input json to Policy agent", opa_url=self.opa_url, input=opa_input)
+        try:
+            result = await async_client.post(self.opa_url, json=opa_input)
+        except (NetworkError, TypeError) as exc:
+            logger.debug("Could not get decision from policy agent", error=str(exc))
+            raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
+
+        json_result = result.json()
+        logger.debug("Received decision from policy agent", decision=json_result)
+        return OPAResult.parse_obj(json_result)
+
+    def evaluate_decision(self, decision: OPAResult, **context: dict[str, Any]) -> bool:
+        did = decision.decision_id
+
+        if decision.result:
+            logger.debug("User is authorized to access the resource", decision_id=did, **context)
+            return True
+
+        logger.debug("User is not allowed to access the resource", decision_id=did, **context)
+        if not self.auto_error:
+            return False
+
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail=f"User is not allowed to access resource: {context.get('resource')} Decision was taken with id: {did}",
         )
 
-        try:
-            data = dict(response.json())
-        except JSONDecodeError:
-            logger.debug(
-                "Unable to parse introspect response",
-                detail=response.text,
-                resource_server_id=self.resource_server_id,
-                openid_url=self.openid_url,
-            )
-            raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
-        logger.debug("Response from openid introspect", response=data)
 
-        if response.status_code not in range(200, 300):
-            logger.debug(
-                "Introspect cannot find an active token, user unauthorized",
-                detail=response.text,
-                resource_server_id=self.resource_server_id,
-                openid_url=self.openid_url,
-            )
-            raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail=response.text)
+class OPAAuthorization(Authorization, OPAMixin):
+    """Applies OPA decisions to HTTP requests for authorization.
 
-        return OIDCUserModel(data)
+    Uses OAUTH2 settings and request information to authorize actions.
+    """
 
-
-async def _get_decision(async_request: AsyncClient, opa_url: str, opa_input: dict) -> OPAResult:
-    logger.debug("Posting input json to Policy agent", opa_url=opa_url, input=opa_input)
-    try:
-        result = await async_request.post(opa_url, json=opa_input)
-    except (NetworkError, TypeError) as exc:
-        logger.debug("Could not get decision from policy agent", error=str(exc))
-        raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
-
-    return OPAResult.parse_obj(result.json())
-
-
-def _evaluate_decision(decision: OPAResult, auto_error: bool, **context: dict[str, Any]) -> bool:
-    did = decision.decision_id
-
-    if decision.result:
-        logger.debug("User is authorized to access the resource", decision_id=did, **context)
-        return True
-
-    logger.debug("User is not allowed to access the resource", decision_id=did, **context)
-    if not auto_error:
-        return False
-
-    raise HTTPException(
-        status_code=HTTPStatus.FORBIDDEN,
-        detail=f"User is not allowed to access resource: {context.get('resource')} Decision was taken with id: {did}",
-    )
-
-
-def opa_decision(
-    opa_url: str,
-    oidc_security: OIDCUser,
-    auto_error: bool = True,
-    opa_kwargs: Union[Mapping[str, str], None] = None,
-) -> Callable[[Request, OIDCUserModel, AsyncClient], Awaitable[Union[bool, None]]]:
-    async def _opa_decision(
-        request: Request,
-        user_info: OIDCUserModel = Depends(oidc_security),
-        async_request: AsyncClient = Depends(_make_async_client),
-    ) -> Union[bool, None]:
-        """Check OIDCUserModel against the OPA policy.
-
-        This is used as a security module in Fastapi projects
-        This method will make an async call towards the Policy agent.
-
-        Args:
-            request: Request object that will be used to retrieve request metadata.
-            user_info: The OIDCUserModel object that will be checked
-            async_request: The httpx client.
-        """
-
+    async def authorize(
+        self, request: HTTPConnection, user_info: OIDCUserModel = Depends(oidc_instance.authenticate)
+    ) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
         try:
-            json = await request.json()
+            if isinstance(request, WebSocket):
+                json = {}
+            else:
+                request = cast(Request, request)
+                json = await request.json()
         # Silencing the Decode error or Type error when request.json() does not return anything sane.
         # Some requests do not have a json response therefore as this code gets called on every request
         # we need to suppress the `None` case (TypeError) or the `other than json` case (JSONDecodeError)
@@ -360,7 +360,7 @@ def opa_decision(
         request_method = request.method if hasattr(request, "method") else "GET"
         opa_input = {
             "input": {
-                **(opa_kwargs or {}),
+                **(self.opa_kwargs or {}),
                 **user_info,
                 "resource": request.url.path,
                 "method": request_method,
@@ -368,7 +368,8 @@ def opa_decision(
             }
         }
 
-        decision = await _get_decision(async_request, opa_url, opa_input)
+        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
+            decision = await self.get_decision(async_request, opa_input)
 
         context = {
             "resource": opa_input["input"]["resource"],
@@ -377,52 +378,40 @@ def opa_decision(
             "input": opa_input,
             "url": request.url,
         }
-        return _evaluate_decision(decision, auto_error, **context)
-
-    return _opa_decision
+        return self.evaluate_decision(decision, **context)
 
 
-def opa_graphql_decision(
-    opa_url: str,
-    _oidc_security: OIDCUser,
-    auto_error: bool = False,  # By default don't raise HTTP 403 because partial results are preferred
-    opa_kwargs: Union[Mapping[str, str], None] = None,
-    async_request: Union[AsyncClient, None] = None,
-) -> Callable[[str, OIDCUserModel], Awaitable[Union[bool, None]]]:
-    async def _opa_decision(
-        path: str,
-        oidc_user: OIDCUserModel = Depends(_oidc_security),
-        async_request_1: Union[AsyncClient, None] = None,
-    ) -> Union[bool, None]:
-        """Check OIDCUserModel against the OPA policy.
+class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
+    """Specializes OPA authorization for GraphQL operations.
 
-        This is used as a security module in Graphql projects
-        This method will make an async call towards the Policy agent.
+    Customizable to handle partial results without raising HTTP 403.
+    """
 
-        Args:
-            path: the graphql path that will be checked against the permissions of the oidc_user
-            oidc_user: The OIDCUserModel object that will be checked
-            async_request_1: The Async client
-        """
+    def __init__(self, opa_url: str, auto_error: bool = False, opa_kwargs: Union[Mapping[str, Any], None] = None):
+        # By default don't raise HTTP 403 because partial results are preferred
+        super().__init__(opa_url, auto_error, opa_kwargs)
+
+    async def authorize(
+        self, request: RequestPath, user_info: OIDCUserModel = Depends(oidc_instance.authenticate)
+    ) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
         opa_input = {
             "input": {
-                **(opa_kwargs or {}),
-                **oidc_user,
-                "resource": path,
+                **(self.opa_kwargs or {}),
+                **user_info,
+                "resource": request,
                 "method": "POST",
             }
         }
 
-        client_request = async_request or async_request_1
-        if not client_request:
-            client_request = AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT)
-
-        decision = await _get_decision(client_request, opa_url, opa_input)
+        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
+            decision = await self.get_decision(async_request, opa_input)
 
         context = {"resource": opa_input["input"]["resource"], "input": opa_input}
-        return _evaluate_decision(decision, auto_error, **context)
+        return self.evaluate_decision(decision, **context)
 
-    return _opa_decision
+
+opa_instance = OPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
+opa_instance_graphql = GraphQLOPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
