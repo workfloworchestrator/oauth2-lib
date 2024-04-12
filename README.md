@@ -2,6 +2,7 @@
 
 [![pypi_version](https://img.shields.io/pypi/v/oauth2-lib?color=%2334D058&label=pypi%20package)](https://pypi.org/project/oauth2-lib)
 [![Supported python versions](https://img.shields.io/pypi/pyversions/oauth2-lib.svg?color=%2334D058)](https://pypi.org/project/oauth2-lib)
+[![codecov](https://codecov.io/gh/workfloworchestrator/oauth2-lib/graph/badge.svg?token=JDMMBBOVM4)](https://codecov.io/gh/workfloworchestrator/oauth2-lib)
 
 This Project contains a Mixin class that wraps an openapi-codegen python client, to inject Opentelemetry spans
 and api call retries. It also contains a number of FastAPI dependencies which enables Policy enforcement offloading
