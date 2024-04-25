@@ -17,7 +17,7 @@ from http import HTTPStatus
 from json import JSONDecodeError
 from typing import Any, Callable, Optional, Union, cast
 
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from fastapi.requests import Request
 from fastapi.security.http import HTTPBearer
 from httpx import AsyncClient, NetworkError
@@ -78,7 +78,7 @@ class OIDCUserModel(dict):
 
 RequestPath = str
 AuthenticationFunc = Callable[[HTTPConnection, Optional[str]], Awaitable[Optional[dict]]]
-AuthorizationFunc = Callable[[HTTPConnection, OIDCUserModel, Any], Awaitable[bool]]
+AuthorizationFunc = Callable[[HTTPConnection, OIDCUserModel], Awaitable[bool]]
 GraphqlAuthorizationFunc = Callable[[RequestPath, OIDCUserModel], Awaitable[Optional[bool]]]
 
 
@@ -252,15 +252,6 @@ class OIDCAuth(Authentication):
         self.openid_config = OIDCConfig.parse_obj(response.json())
 
 
-oidc_instance = OIDCAuth(
-    openid_url=oauth2lib_settings.OIDC_BASE_URL,
-    openid_config_url=oauth2lib_settings.OIDC_CONF_URL,  # Corrected parameter name
-    resource_server_id=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_ID,
-    resource_server_secret=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_SECRET,
-    oidc_user_model_cls=OIDCUserModel,
-)
-
-
 class Authorization(ABC):
     """Defines the authorization logic interface.
 
@@ -268,9 +259,7 @@ class Authorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(
-        self, request: HTTPConnection, user: OIDCUserModel = Depends(oidc_instance.authenticate)
-    ) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> Optional[bool]:
         pass
 
 
@@ -281,9 +270,7 @@ class GraphqlAuthorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(
-        self, request: RequestPath, user: OIDCUserModel = Depends(oidc_instance.authenticate)
-    ) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> Optional[bool]:
         pass
 
 
@@ -333,9 +320,7 @@ class OPAAuthorization(Authorization, OPAMixin):
     Uses OAUTH2 settings and request information to authorize actions.
     """
 
-    async def authorize(
-        self, request: HTTPConnection, user_info: OIDCUserModel = Depends(oidc_instance.authenticate)
-    ) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user_info: OIDCUserModel) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
@@ -391,9 +376,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         # By default don't raise HTTP 403 because partial results are preferred
         super().__init__(opa_url, auto_error, opa_kwargs)
 
-    async def authorize(
-        self, request: RequestPath, user_info: OIDCUserModel = Depends(oidc_instance.authenticate)
-    ) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user_info: OIDCUserModel) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
@@ -413,5 +396,38 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         return self.evaluate_decision(decision, **context)
 
 
-opa_instance = OPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
-opa_instance_graphql = GraphQLOPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
+class AuthManager:
+    def __init__(self) -> None:
+        self._authentication = OIDCAuth(
+            openid_url=oauth2lib_settings.OIDC_BASE_URL,
+            openid_config_url=oauth2lib_settings.OIDC_CONF_URL,  # Corrected parameter name
+            resource_server_id=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_ID,
+            resource_server_secret=oauth2lib_settings.OAUTH2_RESOURCE_SERVER_SECRET,
+            oidc_user_model_cls=OIDCUserModel,
+        )
+        self._authorization: Authorization = OPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
+        self._graphql_authorization: GraphqlAuthorization = GraphQLOPAAuthorization(opa_url=oauth2lib_settings.OPA_URL)
+
+    @property
+    def authentication(self) -> OIDCAuth:
+        return self._authentication
+
+    @authentication.setter
+    def authentication(self, auth_instance: OIDCAuth) -> None:
+        self._authentication = auth_instance
+
+    @property
+    def authorization(self) -> Authorization:
+        return self._authorization
+
+    @authorization.setter
+    def authorization(self, auth_instance: Authorization) -> None:
+        self._authorization = auth_instance
+
+    @property
+    def graphql_authorization(self) -> GraphqlAuthorization:
+        return self._graphql_authorization
+
+    @graphql_authorization.setter
+    def graphql_authorization(self, auth_instance: GraphqlAuthorization) -> None:
+        self._graphql_authorization = auth_instance

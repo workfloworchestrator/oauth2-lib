@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.testclient import TestClient
 from strawberry.fastapi import GraphQLRouter
 
-from oauth2_lib.fastapi import GraphQLOPAAuthorization, OIDCAuth, OIDCUserModel
+from oauth2_lib.fastapi import AuthManager, GraphQLOPAAuthorization, OIDCAuth, OIDCUserModel
 from oauth2_lib.strawberry import (
     OauthContext,
     authenticated_federated_field,
@@ -15,6 +15,26 @@ from oauth2_lib.strawberry import (
     authenticated_mutation_field,
 )
 from tests.test_fastapi import user_info_matching
+
+
+async def get_oidc_authentication():
+    class OIDCAuthMock(OIDCAuth):
+        async def userinfo(self, request: Request, token: Optional[str] = None) -> Optional[OIDCUserModel]:
+            return user_info_matching
+
+    return OIDCAuthMock("openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel)
+
+
+async def get_opa_security_graphql():
+    return GraphQLOPAAuthorization(opa_url="https://opa_url.test")
+
+
+async def get_auth_manger():
+    auth_manager = AuthManager()
+    auth_manager.authentication = await get_oidc_authentication()
+    auth_manager.graphql_authorization = await get_opa_security_graphql()
+
+    return auth_manager
 
 
 @pytest.fixture
@@ -53,27 +73,8 @@ def mock_graphql_app():  # noqa: C901
             def add_book(self, title: str, author: str) -> BookType:
                 return BookType(title=title, author=author)
 
-        async def get_oidc_user():
-            class OIDCAuthMock(OIDCAuth):
-                async def userinfo(self, request: Request, token: Optional[str] = None) -> Optional[OIDCUserModel]:
-                    return user_info_matching
-
-            oidc_auth = OIDCAuthMock(
-                "openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel
-            )
-
-            return oidc_auth.authenticate
-
-        async def get_opa_security_graphql():
-            return GraphQLOPAAuthorization(opa_url="https://opa_url.test").authorize
-
-        async def get_context(
-            get_current_user=Depends(get_oidc_user),  # noqa: B008
-            get_authorization_decision=Depends(get_opa_security_graphql),  # noqa: B008
-        ) -> OauthContext:  # type: ignore # noqa: B008
-            return OauthContext(
-                get_current_user=get_current_user, get_authorization_decision=get_authorization_decision
-            )
+        async def get_context(auth_manager=Depends(get_auth_manger)) -> OauthContext:  # type: ignore # noqa: B008
+            return OauthContext(auth_manager=auth_manager)
 
         app = FastAPI()
         schema = strawberry.Schema(query=Query, mutation=Mutation)
