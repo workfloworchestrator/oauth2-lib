@@ -397,6 +397,23 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
 
 
 class AuthManager:
+    """Manages the authentication and authorization mechanisms for the application.
+
+    This manager class orchestrates authentication and authorization, utilizing OpenID Connect (OIDC) and
+    Open Policy Agent (OPA) respectively. It serves as a central hub for user authentication states and
+    authorization policies. If defaults are insufficient, users can register alternatives or customize existing ones.
+
+    Attributes:
+        _authentication (OIDCAuth): Handles user authentication.
+        _authorization (Authorization): Manages access controls.
+        _graphql_authorization (GraphqlAuthorization): Manages GraphQL-specific authorization.
+
+    Methods:
+        authentication: Gets or sets the OIDCAuth instance, allowing customization of the authentication process.
+        authorization: Gets or sets the Authorization instance, permitting customization of access controls.
+        graphql_authorization: Gets or sets the GraphqlAuthorization instance, enabling specific security policies for GraphQL.
+    """
+
     def __init__(self) -> None:
         self._authentication = OIDCAuth(
             openid_url=oauth2lib_settings.OIDC_BASE_URL,
