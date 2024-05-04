@@ -109,7 +109,10 @@ async def is_authorized(info: OauthInfo, path: str) -> bool:
     authorization_decision = await context.auth_manager.graphql_authorization.authorize(path, current_user)
     authorized = bool(authorization_decision)
     logger.debug(
-        "Received opa decision", path=path, authorization_decision=authorization_decision, is_authorized=authorized
+        "Received graphql authorization decision",
+        path=path,
+        authorization_decision=authorization_decision,
+        is_authorized=authorized,
     )
 
     return authorized
