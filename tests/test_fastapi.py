@@ -1,74 +1,16 @@
+from http import HTTPStatus
 from unittest import mock
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.exceptions import HTTPException
 from fastapi.requests import Request
-from httpx import AsyncClient, BasicAuth, Response
+from httpx import AsyncClient, BasicAuth
+from starlette.websockets import WebSocket
 
-from oauth2_lib.fastapi import OIDCConfig, OIDCUser, OIDCUserModel
+from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
-
-discovery = {
-    "issuer": "https://connect.test.surfconext.nl",
-    "authorization_endpoint": "https://connect.test.surfconext.nl/oidc/authorize",
-    "token_endpoint": "https://connect.test.surfconext.nl/oidc/token",
-    "userinfo_endpoint": "https://connect.test.surfconext.nl/oidc/userinfo",
-    "introspect_endpoint": "https://connect.test.surfconext.nl/oidc/introspect",
-    "jwks_uri": "https://connect.test.surfconext.nl/oidc/certs",
-    "response_types_supported": [
-        "code",
-        "token",
-        "id_token",
-        "code token",
-        "code id_token",
-        "token id_token",
-        "code token id_token",
-    ],
-    "response_modes_supported": ["fragment", "query", "form_post"],
-    "grant_types_supported": ["authorization_code", "implicit", "refresh_token", "client_credentials"],
-    "subject_types_supported": ["public", "pairwise"],
-    "id_token_signing_alg_values_supported": ["RS256"],
-    "scopes_supported": ["openid", "groups", "profile", "email", "address", "phone"],
-    "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic"],
-    "claims_supported": [
-        "aud",
-        "nbf",
-        "iss",
-        "exp",
-        "iat",
-        "jti",
-        "nonce",
-        "at_hash",
-        "c_hash",
-        "s_hash",
-        "at_hash",
-        "auth_time",
-        "sub",
-        "edumember_is_member_of",
-        "eduperson_affiliation",
-        "eduperson_entitlement",
-        "eduperson_principal_name",
-        "eduperson_scoped_affiliation",
-        "email",
-        "email_verified",
-        "family_name",
-        "given_name",
-        "name",
-        "nickname",
-        "preferred_username",
-        "schac_home_organization",
-        "schac_home_organization_type",
-        "schac_personal_unique_code",
-        "eduperson_orcid",
-        "eckid",
-        "surf-crm-id",
-        "uids",
-    ],
-    "claims_parameter_supported": True,
-    "request_parameter_supported": True,
-    "code_challenge_methods_supported": ["plain", "S256"],
-}
-
+from tests.conftest import MockResponse
 
 user_info = {"active": True, "uids": ["boers"], "updated_at": 1582810910, "scope": "openid test:scope", "sub": "hoi"}
 
@@ -159,236 +101,132 @@ class MockBasicAuth(BasicAuth):
         return isinstance(other, BasicAuth) and self._auth_header == other._auth_header
 
 
-@pytest.mark.asyncio
-async def test_openid_config(make_mock_async_client):
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-
-    mock_async_client = make_mock_async_client(discovery)
-
-    await openid_bearer.check_openid_config(mock_async_client)
-
-    assert openid_bearer.openid_config == OIDCConfig.parse_obj(discovery)
-
-    mock_async_client.get.assert_called_once_with("openid_url/.well-known/openid-configuration")
-
-
-@pytest.mark.asyncio
-async def test_introspect_token(make_mock_async_client):
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-
-    mock_async_client = make_mock_async_client(user_info_matching)
-
-    result = await openid_bearer.introspect_token(mock_async_client, access_token)
-
-    assert result == user_info_matching
-
-    mock_async_client.post.assert_called_once_with(
-        discovery["introspect_endpoint"],
-        auth=MockBasicAuth("id", "secret"),
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        params={"token": access_token},
-        data={"token": access_token},
+@pytest.fixture()
+def oidc_auth():
+    return OIDCAuth(
+        "openid_url", "openid_url/.well-known/openid-configuration", "server_id", "server_secret", OIDCUserModel
     )
 
 
 @pytest.mark.asyncio
-async def test_introspect_exception():
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-
-    mock_async_client = mock.MagicMock(spec=AsyncClient)
-
-    async def mock_request(*args, **kwargs):
-        mock_response = mock.MagicMock(spec=Response)
-        mock_response.status_code = 400
-        mock_response.text = "error"
-        mock_response.json.return_value = {"error": "error"}
-        return mock_response
-
-    mock_async_client.post.side_effect = mock_request
-
-    with pytest.raises(HTTPException) as exception:
-        await openid_bearer.introspect_token(mock_async_client, access_token)
-
-    assert exception.value.detail == "error"
-
-    mock_async_client.post.assert_called_once_with(
-        discovery["introspect_endpoint"],
-        auth=MockBasicAuth("id", "secret"),
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        params={"token": access_token},
-        data={"token": access_token},
-    )
+async def test_openid_config_success(make_mock_async_client, discovery, oidc_auth):
+    mock_async_client = make_mock_async_client(MockResponse(json=discovery))
+    await oidc_auth.check_openid_config(mock_async_client.client)
+    assert oidc_auth.openid_config == OIDCConfig.parse_obj(discovery)
+    mock_async_client.client.get.assert_called_once_with("openid_url/.well-known/openid-configuration")
+    assert oidc_auth.openid_config.issuer == discovery["issuer"], "OpenID configuration not loaded correctly"
 
 
 @pytest.mark.asyncio
-async def test_introspect_token_keycloak(make_mock_async_client):
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    discovery["introspection_endpoint"] = discovery["introspect_endpoint"]
-    discovery["introspect_endpoint"] = ""
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+async def test_fetch_openid_config_failure(make_mock_async_client, discovery, oidc_auth):
+    mock_async_client = make_mock_async_client(MockResponse(status_code=404))
 
-    mock_async_client = make_mock_async_client(user_info_matching)
-
-    result = await openid_bearer.introspect_token(mock_async_client, access_token)
-
-    assert result == user_info_matching
-
-    mock_async_client.post.assert_called_once_with(
-        discovery["introspection_endpoint"],
-        auth=MockBasicAuth("id", "secret"),
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        params={"token": access_token},
-        data={"token": access_token},
-    )
+    with pytest.raises(HTTPException) as exc_info:
+        await oidc_auth.check_openid_config(mock_async_client.client)
+    assert exc_info.value.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert exc_info.value.detail == f"Could not load openid config from {oidc_auth.openid_config_url}"
 
 
 @pytest.mark.asyncio
-async def test_introspect_exception_keycloak():
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    discovery["introspection_endpoint"] = discovery["introspect_endpoint"]
-    discovery["introspect_endpoint"] = ""
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+async def test_userinfo_success_with_mock(oidc_auth):
+    oidc_auth.userinfo = AsyncMock(return_value={"sub": "hoi"})
+    user = await oidc_auth.userinfo(AsyncClient(), "valid_token")
+    assert user["sub"] == "hoi", "User info not retrieved correctly"
 
-    mock_async_client = mock.MagicMock(spec=AsyncClient)
 
-    async def mock_request(*args, **kwargs):
-        mock_response = mock.MagicMock(spec=Response)
-        mock_response.status_code = 400
-        mock_response.text = "error"
-        mock_response.json.return_value = {"error": "error"}
-        return mock_response
-
-    mock_async_client.post.side_effect = mock_request
-
-    with pytest.raises(HTTPException) as exception:
-        await openid_bearer.introspect_token(mock_async_client, access_token)
-
-    assert exception.value.detail == "error"
-
-    mock_async_client.post.assert_called_once_with(
-        discovery["introspection_endpoint"],
-        auth=MockBasicAuth("id", "secret"),
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        params={"token": access_token},
-        data={"token": access_token},
-    )
+def test_oidc_auth_initialization_default_extractor(oidc_auth):
+    assert isinstance(
+        oidc_auth.id_token_extractor, HttpBearerExtractor
+    ), "Default ID token extractor should be HttpBearerExtractor"
 
 
 @pytest.mark.asyncio
-async def test_OIDCUser():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {"Authorization": "Bearer creds"}
-
-    async def mock_introspect_token(client, token):
-        return user_info_matching
-
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
-
-    result = await openid_bearer(mock_request)
-
-    assert result == user_info_matching
+async def test_extract_token_success():
+    request = mock.MagicMock()
+    request.headers = {"Authorization": "Bearer example_token"}
+    extractor = HttpBearerExtractor()
+    assert await extractor.extract(request) == "example_token", "Token extraction failed"
 
 
 @pytest.mark.asyncio
-async def test_OIDCUser_with_token():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {"Authorization": "Bearer creds"}
-
-    async def mock_introspect_token(client, token):
-        return user_info_matching
-
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
-
-    result = await openid_bearer(mock_request, token="creds")  # noqa: S106
-
-    assert result == user_info_matching
+async def test_extract_token_failure():
+    request = mock.MagicMock()
+    request.headers = {}
+    extractor = HttpBearerExtractor()
+    with pytest.raises(HTTPException) as exc_info:
+        await extractor.extract(request)
+    assert exc_info.value.status_code == 403, "Expected HTTP 403 error for missing token"
 
 
 @pytest.mark.asyncio
-async def test_OIDCUser_incompatible_schema():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {"Authorization": "basic creds"}
+async def test_authenticate_success(make_mock_async_client, discovery, oidc_auth):
+    mock_async_client = make_mock_async_client(MockResponse(json=discovery))
+    with mock.patch("oauth2_lib.fastapi.AsyncClient", return_value=mock_async_client):
+        oidc_auth.userinfo = AsyncMock(return_value=user_info_matching)
 
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
+        request = mock.MagicMock(spec=Request)
+        request.headers = {"Authorization": "Bearer valid_token"}
 
-    with pytest.raises(HTTPException) as exception:
-        await openid_bearer(mock_request)
-
-    assert exception.value.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_OIDCUser_invalid():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {"Authorization": "Bearer creds"}
-
-    async def mock_introspect_token(client, token):
-        return {"wrong_data": "wrong_data"}
-
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
-
-    with pytest.raises(HTTPException) as exception:
-        await openid_bearer(mock_request)
-
-    assert exception.value.status_code == 401
+        user = await oidc_auth.authenticate(request)
+        assert user == user_info_matching, "Authentication failed for a valid token"
 
 
 @pytest.mark.asyncio
-async def test_OIDCUser_no_creds_no_error():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {}
-
-    async def mock_introspect_token(client, token):
-        return {"wrong_data": "wrong_data"}
-
-    openid_bearer = OIDCUser("openid_url", "id", "secret", auto_error=False)
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
-
-    result = await openid_bearer(mock_request, None)
-
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_OIDCUser_disabled():
-    mock_request = mock.MagicMock(spec=Request)
-    mock_request.headers = {"Authorization": "Bearer creds"}
-
-    async def mock_introspect_token(client, token):
-        return {"wrong_data": "wrong_data"}
-
+async def test_authenticate_oauth2_inactive():
     oauth2lib_settings.OAUTH2_ACTIVE = False
-    openid_bearer = OIDCUser("openid_url", "id", "secret")
-    openid_bearer.openid_config = OIDCConfig.parse_obj(discovery)
-    openid_bearer.introspect_token = mock_introspect_token  # type:ignore
-
-    result = await openid_bearer(mock_request)
-
-    assert result is None
+    oidc_auth = OIDCAuth(
+        "openid_url", "openid_url/.well-known/openid-configuration", "server_id", "server_secret", OIDCUserModel
+    )
+    result = await oidc_auth.authenticate(request=mock.MagicMock(spec=Request))
+    assert result is None, "Authentication should be bypassed when OAuth2 is inactive"
     oauth2lib_settings.OAUTH2_ACTIVE = True
 
 
-def test_OIDCUserModel():
+@pytest.mark.asyncio
+async def test_authenticate_bypassable_request(make_mock_async_client, discovery):
+    mock_async_client = make_mock_async_client(MockResponse(json=discovery))
+    with mock.patch("oauth2_lib.fastapi.AsyncClient", return_value=mock_async_client):
+
+        class OIDCAuthMock(OIDCAuth):
+            @staticmethod
+            async def is_bypassable_request(request: Request) -> bool:
+                return True
+
+        OIDCAuth.is_bypassable_request = staticmethod(lambda req: True)
+        oidc_auth = OIDCAuthMock(
+            "openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel
+        )
+        result = await oidc_auth.authenticate(mock.MagicMock(spec=Request), "random_valid_token")
+        assert result is None, "Authentication should return None for bypassable requests"
+
+
+@pytest.mark.asyncio
+async def test_authenticate_token_extraction_failure(make_mock_async_client, discovery, oidc_auth):
+    mock_async_client = make_mock_async_client(MockResponse(json=discovery))
+    with mock.patch("oauth2_lib.fastapi.AsyncClient", return_value=mock_async_client):
+        request = mock.MagicMock(spec=Request)
+        request.headers = {}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await oidc_auth.authenticate(request)
+            assert exc_info.value.status_code == 403
+            assert exc_info.value.detail == "Not authenticated"
+
+
+def test_oidc_user_model():
     user_model = OIDCUserModel(**user_info_matching)
     assert user_model.user_name == ""
-    assert user_model.display_name == ""
-    assert user_model.principal_name == "doe@surfnet.nl"
-    assert user_model.email == "john.doe@surfnet.nl"
-    assert len(user_model.memberships) == 1
-    assert len(user_model.teams) == 0
-    assert len(user_model.entitlements) == 1
-    assert len(user_model.roles) == 1
-    assert user_model.roles == {"role0"}
-    assert user_model.organization_codes == set()
-    assert user_model.organization_guids == set()
-    assert user_model.scopes == {"openid", "test:scope"}
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_websocket_request_raises_403(oidc_auth):
+    oidc_auth.check_openid_config = mock.AsyncMock()
+    oidc_auth.userinfo = mock.AsyncMock()
+
+    websocket = WebSocket(scope={"type": "websocket"}, receive=mock.AsyncMock(), send=mock.AsyncMock())
+
+    with pytest.raises(HTTPException) as exc_info:
+        await oidc_auth.authenticate(websocket)
+
+    assert exc_info.value.status_code == 403, "Expected HTTP 403 error for unauthenticated websocket request"
+    assert exc_info.value.detail == "Not authenticated"

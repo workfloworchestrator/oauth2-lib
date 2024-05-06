@@ -10,8 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from collections.abc import Awaitable
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
 import asyncstdlib
 import strawberry
@@ -25,15 +24,22 @@ from strawberry.types import Info
 from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.types.info import RootValueType
 
-from oauth2_lib.fastapi import OIDCUserModel
+from oauth2_lib.fastapi import AuthManager, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
 
 logger = structlog.get_logger(__name__)
 
 
 class OauthContext(BaseContext):
+    def __init__(
+        self,
+        auth_manager: AuthManager,
+    ):
+        self.auth_manager = auth_manager
+        super().__init__()
+
     @asyncstdlib.cached_property
-    async def get_current_user(self) -> Union[OIDCUserModel, None]:
+    async def get_current_user(self) -> Optional[OIDCUserModel]:
         """Retrieve the OIDCUserModel once per graphql request.
 
         Note:
@@ -48,19 +54,10 @@ class OauthContext(BaseContext):
             return None
 
         try:
-            return await self._get_current_user(self.request)
+            return await self.auth_manager.authentication.authenticate(self.request)
         except HTTPException as exc:
             logger.debug("User is not authenticated", status_code=exc.status_code, detail=exc.detail)
             return None
-
-    def __init__(
-        self,
-        get_current_user: Callable[[Request], Awaitable[OIDCUserModel]],
-        get_opa_decision: Callable[[str, OIDCUserModel], Awaitable[Union[bool, None]]],
-    ):
-        self._get_current_user = get_current_user
-        self.get_opa_decision = get_opa_decision
-        super().__init__()
 
 
 OauthInfo = Info[OauthContext, RootValueType]
@@ -109,9 +106,14 @@ async def is_authorized(info: OauthInfo, path: str) -> bool:
     if not current_user:
         return False
 
-    opa_decision = await context.get_opa_decision(path, current_user)
-    authorized = bool(opa_decision)
-    logger.debug("Received opa decision", path=path, opa_decision=opa_decision, is_authorized=authorized)
+    authorization_decision = await context.auth_manager.graphql_authorization.authorize(path, current_user)
+    authorized = bool(authorization_decision)
+    logger.debug(
+        "Received graphql authorization decision",
+        path=path,
+        authorization_decision=authorization_decision,
+        is_authorized=authorized,
+    )
 
     return authorized
 
