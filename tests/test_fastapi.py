@@ -192,7 +192,6 @@ async def test_authenticate_bypassable_request(make_mock_async_client, discovery
             async def is_bypassable_request(request: Request) -> bool:
                 return True
 
-        OIDCAuth.is_bypassable_request = staticmethod(lambda req: True)
         oidc_auth = OIDCAuthMock(
             "openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel
         )

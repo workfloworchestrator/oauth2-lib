@@ -209,13 +209,13 @@ class OIDCAuth(Authentication):
                 token_or_extracted_id_token = token
             else:
                 request = cast(Request, request)
+                if await self.is_bypassable_request(request):
+                    return None
                 if token is None:
                     extracted_id_token = await self.id_token_extractor.extract(request)
                     if not extracted_id_token:
                         return None
                     token_or_extracted_id_token = extracted_id_token
-                elif await self.is_bypassable_request(request):
-                    return None
                 else:
                     token_or_extracted_id_token = token
 
