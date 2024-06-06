@@ -137,7 +137,7 @@ class IdTokenExtractor(ABC):
     """
 
     @abstractmethod
-    async def extract(self, request: Request) -> Optional[str]:
+    async def extract(self, request: Request, auto_error: bool = True) -> Optional[str]:
         pass
 
 
@@ -145,10 +145,14 @@ class HttpBearerExtractor(IdTokenExtractor):
     """Extracts bearer tokens using FastAPI's HTTPBearer.
 
     Specifically designed for HTTP Authorization header token extraction.
+
+    By default, if an HTTP Bearer token is not provided in the `Authorization` header,
+    the `extract` method will cancel the request and send an error unless `auto_error`
+    is set to `False`, allowing optional or multiple authentication methods.
     """
 
-    async def extract(self, request: Request) -> Optional[str]:
-        http_bearer = HTTPBearer(auto_error=True)
+    async def extract(self, request: Request, auto_error: bool = True) -> Optional[str]:
+        http_bearer = HTTPBearer(auto_error=auto_error)
         credential = await http_bearer(request)
 
         return credential.credentials if credential else None
@@ -209,13 +213,12 @@ class OIDCAuth(Authentication):
                 token_or_extracted_id_token = token
             else:
                 request = cast(Request, request)
+
                 if await self.is_bypassable_request(request):
                     return None
+
                 if token is None:
-                    extracted_id_token = await self.id_token_extractor.extract(request)
-                    if not extracted_id_token:
-                        return None
-                    token_or_extracted_id_token = extracted_id_token
+                    token_or_extracted_id_token = await self.id_token_extractor.extract(request, auto_error=True)
                 else:
                     token_or_extracted_id_token = token
 
@@ -346,7 +349,7 @@ class OPAAuthorization(Authorization, OPAMixin):
         opa_input = {
             "input": {
                 **(self.opa_kwargs or {}),
-                **user_info,
+                **(user_info or {}),
                 "resource": request.url.path,
                 "method": request_method,
                 "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
@@ -383,7 +386,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         opa_input = {
             "input": {
                 **(self.opa_kwargs or {}),
-                **user_info,
+                **(user_info or {}),
                 "resource": request,
                 "method": "POST",
             }
