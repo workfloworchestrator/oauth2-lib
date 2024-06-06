@@ -23,6 +23,7 @@ from fastapi.security.http import HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
+from starlette.status import HTTP_403_FORBIDDEN
 from starlette.websockets import WebSocket
 from structlog import get_logger
 
@@ -137,7 +138,7 @@ class IdTokenExtractor(ABC):
     """
 
     @abstractmethod
-    async def extract(self, request: Request, auto_error: bool = True) -> Optional[str]:
+    async def extract(self, request: Request) -> Optional[str]:
         pass
 
 
@@ -145,14 +146,10 @@ class HttpBearerExtractor(IdTokenExtractor):
     """Extracts bearer tokens using FastAPI's HTTPBearer.
 
     Specifically designed for HTTP Authorization header token extraction.
-
-    By default, if an HTTP Bearer token is not provided in the `Authorization` header,
-    the `extract` method will cancel the request and send an error unless `auto_error`
-    is set to `False`, allowing optional or multiple authentication methods.
     """
 
-    async def extract(self, request: Request, auto_error: bool = True) -> Optional[str]:
-        http_bearer = HTTPBearer(auto_error=auto_error)
+    async def extract(self, request: Request) -> Optional[str]:
+        http_bearer = HTTPBearer(auto_error=False)
         credential = await http_bearer(request)
 
         return credential.credentials if credential else None
@@ -218,7 +215,11 @@ class OIDCAuth(Authentication):
                     return None
 
                 if token is None:
-                    token_or_extracted_id_token = await self.id_token_extractor.extract(request, auto_error=True) or ""
+                    extracted_id_token = await self.id_token_extractor.extract(request)
+                    if not extracted_id_token:
+                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+
+                    token_or_extracted_id_token = extracted_id_token
                 else:
                     token_or_extracted_id_token = token
 
@@ -262,7 +263,7 @@ class Authorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user: Optional[OIDCUserModel] = None) -> Optional[bool]:
         pass
 
 
@@ -273,7 +274,7 @@ class GraphqlAuthorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user: Optional[OIDCUserModel] = None) -> Optional[bool]:
         pass
 
 
@@ -323,7 +324,7 @@ class OPAAuthorization(Authorization, OPAMixin):
     Uses OAUTH2 settings and request information to authorize actions.
     """
 
-    async def authorize(self, request: HTTPConnection, user_info: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user_info: Optional[OIDCUserModel] = None) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
@@ -379,7 +380,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         # By default don't raise HTTP 403 because partial results are preferred
         super().__init__(opa_url, auto_error, opa_kwargs)
 
-    async def authorize(self, request: RequestPath, user_info: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user_info: Optional[OIDCUserModel] = None) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
