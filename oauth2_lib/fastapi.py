@@ -218,7 +218,7 @@ class OIDCAuth(Authentication):
                     return None
 
                 if token is None:
-                    token_or_extracted_id_token = await self.id_token_extractor.extract(request, auto_error=True)
+                    token_or_extracted_id_token = await self.id_token_extractor.extract(request, auto_error=True) or ""
                 else:
                     token_or_extracted_id_token = token
 
