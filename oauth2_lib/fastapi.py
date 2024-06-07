@@ -263,7 +263,7 @@ class Authorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: HTTPConnection, user: Optional[OIDCUserModel] = None) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> Optional[bool]:
         pass
 
 
@@ -274,7 +274,7 @@ class GraphqlAuthorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: RequestPath, user: Optional[OIDCUserModel] = None) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> Optional[bool]:
         pass
 
 
@@ -324,7 +324,7 @@ class OPAAuthorization(Authorization, OPAMixin):
     Uses OAUTH2 settings and request information to authorize actions.
     """
 
-    async def authorize(self, request: HTTPConnection, user_info: Optional[OIDCUserModel] = None) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user_info: OIDCUserModel) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
@@ -380,7 +380,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         # By default don't raise HTTP 403 because partial results are preferred
         super().__init__(opa_url, auto_error, opa_kwargs)
 
-    async def authorize(self, request: RequestPath, user_info: Optional[OIDCUserModel] = None) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user_info: OIDCUserModel) -> Optional[bool]:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
