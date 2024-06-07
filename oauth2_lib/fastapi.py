@@ -23,6 +23,7 @@ from fastapi.security.http import HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
+from starlette.status import HTTP_403_FORBIDDEN
 from starlette.websockets import WebSocket
 from structlog import get_logger
 
@@ -148,7 +149,7 @@ class HttpBearerExtractor(IdTokenExtractor):
     """
 
     async def extract(self, request: Request) -> Optional[str]:
-        http_bearer = HTTPBearer(auto_error=True)
+        http_bearer = HTTPBearer(auto_error=False)
         credential = await http_bearer(request)
 
         return credential.credentials if credential else None
@@ -209,12 +210,15 @@ class OIDCAuth(Authentication):
                 token_or_extracted_id_token = token
             else:
                 request = cast(Request, request)
+
                 if await self.is_bypassable_request(request):
                     return None
+
                 if token is None:
                     extracted_id_token = await self.id_token_extractor.extract(request)
                     if not extracted_id_token:
-                        return None
+                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+
                     token_or_extracted_id_token = extracted_id_token
                 else:
                     token_or_extracted_id_token = token
@@ -346,7 +350,7 @@ class OPAAuthorization(Authorization, OPAMixin):
         opa_input = {
             "input": {
                 **(self.opa_kwargs or {}),
-                **user_info,
+                **(user_info or {}),
                 "resource": request.url.path,
                 "method": request_method,
                 "arguments": {"path": request.path_params, "query": {**request.query_params}, "json": json},
@@ -383,7 +387,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
         opa_input = {
             "input": {
                 **(self.opa_kwargs or {}),
-                **user_info,
+                **(user_info or {}),
                 "resource": request,
                 "method": "POST",
             }

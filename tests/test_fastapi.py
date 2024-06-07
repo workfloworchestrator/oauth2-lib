@@ -149,13 +149,11 @@ async def test_extract_token_success():
 
 
 @pytest.mark.asyncio
-async def test_extract_token_failure():
+async def test_extract_token_returns_none():
     request = mock.MagicMock()
     request.headers = {}
     extractor = HttpBearerExtractor()
-    with pytest.raises(HTTPException) as exc_info:
-        await extractor.extract(request)
-    assert exc_info.value.status_code == 403, "Expected HTTP 403 error for missing token"
+    assert await extractor.extract(request) is None
 
 
 @pytest.mark.asyncio
