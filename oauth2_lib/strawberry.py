@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections.abc import Callable
+from enum import StrEnum, auto
 from typing import Any
 
 import asyncstdlib
@@ -119,8 +120,16 @@ async def is_authorized(info: OauthInfo, path: str) -> bool:
     return authorized
 
 
+class ErrorType(StrEnum):
+    """Subset of the ErrorType enum in nwa-stdlib."""
+
+    NOT_AUTHENTICATED = auto()
+    NOT_AUTHORIZED = auto()
+
+
 class IsAuthenticatedForQuery(BasePermission):
     message = "User is not authenticated"
+    error_extensions = {"error_type": ErrorType.NOT_AUTHENTICATED}
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not oauth2lib_settings.OAUTH2_ACTIVE:
@@ -136,6 +145,7 @@ class IsAuthenticatedForQuery(BasePermission):
 
 class IsAuthenticatedForMutation(BasePermission):
     message = "User is not authenticated"
+    error_extensions = {"error_type": ErrorType.NOT_AUTHENTICATED}
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
@@ -146,6 +156,8 @@ class IsAuthenticatedForMutation(BasePermission):
 
 
 class IsAuthorizedForQuery(BasePermission):
+    error_extensions = {"error_type": ErrorType.NOT_AUTHORIZED}
+
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             logger.debug(
@@ -164,6 +176,8 @@ class IsAuthorizedForQuery(BasePermission):
 
 
 class IsAuthorizedForMutation(BasePermission):
+    error_extensions = {"error_type": ErrorType.NOT_AUTHORIZED}
+
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         mutations_active = (
             oauth2lib_settings.OAUTH2_ACTIVE
