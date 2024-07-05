@@ -12,7 +12,7 @@
 # limitations under the License.
 from asyncio import new_event_loop
 from http import HTTPStatus
-from typing import Any, Union
+from typing import Any
 
 import structlog
 from authlib.integrations.base_client import BaseOAuth
@@ -61,7 +61,7 @@ class AsyncAuthMixin:
 
     """
 
-    _token: Union[dict, None]
+    _token: dict | None
 
     def __init__(
         self,

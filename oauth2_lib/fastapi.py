@@ -12,10 +12,10 @@
 # limitations under the License.
 import ssl
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from http import HTTPStatus
 from json import JSONDecodeError
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from fastapi.requests import Request
@@ -93,8 +93,8 @@ class OIDCConfig(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
     userinfo_endpoint: str
-    introspect_endpoint: Optional[str] = None
-    introspection_endpoint: Optional[str] = None
+    introspect_endpoint: str | None = None
+    introspection_endpoint: str | None = None
     jwks_uri: str
     response_types_supported: list[str]
     response_modes_supported: list[str]
@@ -126,7 +126,7 @@ class Authentication(ABC):
     """
 
     @abstractmethod
-    async def authenticate(self, request: HTTPConnection, token: Optional[str] = None) -> Optional[dict]:
+    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> dict | None:
         """Authenticate the user."""
         pass
 
@@ -138,7 +138,7 @@ class IdTokenExtractor(ABC):
     """
 
     @abstractmethod
-    async def extract(self, request: Request) -> Optional[str]:
+    async def extract(self, request: Request) -> str | None:
         pass
 
 
@@ -148,7 +148,7 @@ class HttpBearerExtractor(IdTokenExtractor):
     Specifically designed for HTTP Authorization header token extraction.
     """
 
-    async def extract(self, request: Request) -> Optional[str]:
+    async def extract(self, request: Request) -> str | None:
         http_bearer = HTTPBearer(auto_error=False)
         credential = await http_bearer(request)
 
@@ -168,7 +168,7 @@ class OIDCAuth(Authentication):
         resource_server_id: str,
         resource_server_secret: str,
         oidc_user_model_cls: type[OIDCUserModel],
-        id_token_extractor: Optional[IdTokenExtractor] = None,
+        id_token_extractor: IdTokenExtractor | None = None,
     ):
         if not id_token_extractor:
             self.id_token_extractor = HttpBearerExtractor()
@@ -179,9 +179,9 @@ class OIDCAuth(Authentication):
         self.resource_server_secret = resource_server_secret
         self.user_model_cls = oidc_user_model_cls
 
-        self.openid_config: Optional[OIDCConfig] = None
+        self.openid_config: OIDCConfig | None = None
 
-    async def authenticate(self, request: HTTPConnection, token: Optional[str] = None) -> Optional[OIDCUserModel]:
+    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
@@ -263,7 +263,7 @@ class Authorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user: OIDCUserModel) -> bool | None:
         pass
 
 
@@ -274,7 +274,7 @@ class GraphqlAuthorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> bool | None:
         pass
 
 
@@ -284,7 +284,7 @@ class OPAMixin:
     Supports getting and evaluating OPA policy decisions.
     """
 
-    def __init__(self, opa_url: str, auto_error: bool = True, opa_kwargs: Union[Mapping[str, Any], None] = None):
+    def __init__(self, opa_url: str, auto_error: bool = True, opa_kwargs: Mapping[str, Any] | None = None):
         self.opa_url = opa_url
         self.auto_error = auto_error
         self.opa_kwargs = opa_kwargs
@@ -324,7 +324,7 @@ class OPAAuthorization(Authorization, OPAMixin):
     Uses OAUTH2 settings and request information to authorize actions.
     """
 
-    async def authorize(self, request: HTTPConnection, user_info: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: HTTPConnection, user_info: OIDCUserModel) -> bool | None:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
@@ -376,11 +376,11 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
     Customizable to handle partial results without raising HTTP 403.
     """
 
-    def __init__(self, opa_url: str, auto_error: bool = False, opa_kwargs: Union[Mapping[str, Any], None] = None):
+    def __init__(self, opa_url: str, auto_error: bool = False, opa_kwargs: Mapping[str, Any] | None = None):
         # By default don't raise HTTP 403 because partial results are preferred
         super().__init__(opa_url, auto_error, opa_kwargs)
 
-    async def authorize(self, request: RequestPath, user_info: OIDCUserModel) -> Optional[bool]:
+    async def authorize(self, request: RequestPath, user_info: OIDCUserModel) -> bool | None:
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             return None
 
