@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pytest
 import strawberry
 from fastapi import Depends, FastAPI
@@ -19,7 +17,7 @@ from tests.test_fastapi import user_info_matching
 
 async def get_oidc_authentication():
     class OIDCAuthMock(OIDCAuth):
-        async def userinfo(self, request: Request, token: Optional[str] = None) -> Optional[OIDCUserModel]:
+        async def userinfo(self, request: Request, token: str | None = None) -> OIDCUserModel | None:
             return user_info_matching
 
     return OIDCAuthMock("openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel)

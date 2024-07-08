@@ -10,7 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from enum import StrEnum, auto
+from typing import Any
 
 import asyncstdlib
 import strawberry
@@ -39,7 +41,7 @@ class OauthContext(BaseContext):
         super().__init__()
 
     @asyncstdlib.cached_property
-    async def get_current_user(self) -> Optional[OIDCUserModel]:
+    async def get_current_user(self) -> OIDCUserModel | None:
         """Retrieve the OIDCUserModel once per graphql request.
 
         Note:
@@ -118,8 +120,16 @@ async def is_authorized(info: OauthInfo, path: str) -> bool:
     return authorized
 
 
+class ErrorType(StrEnum):
+    """Subset of the ErrorType enum in nwa-stdlib."""
+
+    NOT_AUTHENTICATED = auto()
+    NOT_AUTHORIZED = auto()
+
+
 class IsAuthenticatedForQuery(BasePermission):
     message = "User is not authenticated"
+    error_extensions = {"error_type": ErrorType.NOT_AUTHENTICATED}
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not oauth2lib_settings.OAUTH2_ACTIVE:
@@ -135,6 +145,7 @@ class IsAuthenticatedForQuery(BasePermission):
 
 class IsAuthenticatedForMutation(BasePermission):
     message = "User is not authenticated"
+    error_extensions = {"error_type": ErrorType.NOT_AUTHENTICATED}
 
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         mutations_active = oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.MUTATIONS_ENABLED
@@ -145,6 +156,8 @@ class IsAuthenticatedForMutation(BasePermission):
 
 
 class IsAuthorizedForQuery(BasePermission):
+    error_extensions = {"error_type": ErrorType.NOT_AUTHORIZED}
+
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         if not (oauth2lib_settings.OAUTH2_ACTIVE and oauth2lib_settings.OAUTH2_AUTHORIZATION_ACTIVE):
             logger.debug(
@@ -163,6 +176,8 @@ class IsAuthorizedForQuery(BasePermission):
 
 
 class IsAuthorizedForMutation(BasePermission):
+    error_extensions = {"error_type": ErrorType.NOT_AUTHORIZED}
+
     async def has_permission(self, source: Any, info: OauthInfo, **kwargs) -> bool:  # type: ignore
         mutations_active = (
             oauth2lib_settings.OAUTH2_ACTIVE
@@ -182,9 +197,9 @@ class IsAuthorizedForMutation(BasePermission):
 
 def authenticated_field(
     description: str,
-    resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
-    deprecation_reason: Union[str, None] = None,
-    permission_classes: Union[list[type[BasePermission]], None] = None,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
+    deprecation_reason: str | None = None,
+    permission_classes: list[type[BasePermission]] | None = None,
 ) -> Any:
     permissions = permission_classes if permission_classes else []
     return strawberry.field(
@@ -197,9 +212,9 @@ def authenticated_field(
 
 def authenticated_mutation_field(
     description: str,
-    resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
-    deprecation_reason: Union[str, None] = None,
-    permission_classes: Union[list[type[BasePermission]], None] = None,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
+    deprecation_reason: str | None = None,
+    permission_classes: list[type[BasePermission]] | None = None,
 ) -> Any:
     permissions = permission_classes if permission_classes else []
     return strawberry.field(
@@ -212,10 +227,10 @@ def authenticated_mutation_field(
 
 def authenticated_federated_field(  # type: ignore
     description: str,
-    resolver: Union[StrawberryResolver, Callable, staticmethod, classmethod, None] = None,
-    deprecation_reason: Union[str, None] = None,
-    requires: Union[list[str], None] = None,
-    permission_classes: Union[list[type[BasePermission]], None] = None,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
+    deprecation_reason: str | None = None,
+    requires: list[str] | None = None,
+    permission_classes: list[type[BasePermission]] | None = None,
     **kwargs,
 ) -> Any:
     permissions = permission_classes if permission_classes else []

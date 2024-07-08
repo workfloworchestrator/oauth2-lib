@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,7 +7,7 @@ from urllib3_mock import Responses
 
 
 class MockResponse:
-    def __init__(self, json: Optional[Any] = None, status_code: int = 200, error: Optional[Exception] = None):
+    def __init__(self, json: Any | None = None, status_code: int = 200, error: Exception | None = None):
         self.json = json
         self.status_code = status_code
         self.error = error
@@ -38,7 +38,7 @@ def make_mock_async_client():
     Pass a MockResponse for single or list for multiple sequential HTTP responses.
     """
 
-    def _make_mock_async_client(mock_response: Union[MockResponse, list[MockResponse], None] = None):
+    def _make_mock_async_client(mock_response: MockResponse | list[MockResponse] | None = None):
         mock_async_client = AsyncMock(spec=AsyncClient)
 
         mock_responses = ([mock_response] if isinstance(mock_response, MockResponse) else mock_response) or []

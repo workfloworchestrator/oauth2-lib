@@ -27,8 +27,6 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.9",
 ]
 requires = [
     "requests>=2.19.0",
@@ -41,7 +39,7 @@ requires = [
     "asyncstdlib",
 ]
 description-file = "README.md"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.11,<3.13"
 
 [tool.flit.metadata.urls]
 Documentation = "https://workfloworchestrator.org/"
@@ -102,6 +100,10 @@ exclude = [
     "build",
     ".venv",
 ]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
 ignore = [
     "B008",
     "D100",
@@ -118,9 +120,9 @@ ignore = [
     "B904",
     "N802",
     "N801",
-    "N818"
+    "N818",
+    "S113", # HTTPX has a default timeout
 ]
-line-length = 120
 select = [
     "B",
     "C",
@@ -134,7 +136,10 @@ select = [
     "T",
     "W",
 ]
-target-version = "py310"
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"

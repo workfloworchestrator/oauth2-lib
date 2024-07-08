@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.11', '3.12']
         pydantic-version: ['1.*', '2.*']
       fail-fast: false
     steps:
@@ -28,10 +28,12 @@ jobs:
           flit install --deps develop
           pip install -U "pydantic==${{ matrix.pydantic-version }}"
           pip install pydantic_settings || true
-      - name: Lint
+      - name: Check formatting
         run: |
-          black . --check
-          ruff .
+          black --check .
+      - name: Lint with ruff
+        run: |
+          ruff check .
       - name: MyPy
         run: |
           mypy -p oauth2_lib
