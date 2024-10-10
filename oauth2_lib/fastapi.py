@@ -194,36 +194,15 @@ class OIDCAuth(Authentication):
             OIDCUserModel object.
 
         """
+        print("authenticate, igor was hier")
         if not oauth2lib_settings.OAUTH2_ACTIVE:
             return None
 
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
             await self.check_openid_config(async_client)
 
-            # Handle WebSocket requests separately only to check for token presence.
-            if isinstance(request, WebSocket):
-                if token is None:
-                    raise HTTPException(
-                        status_code=HTTPStatus.FORBIDDEN,
-                        detail="Not authenticated",
-                    )
-                token_or_extracted_id_token = token
-            else:
-                request = cast(Request, request)
-
-                if await self.is_bypassable_request(request):
-                    return None
-
-                if token is None:
-                    extracted_id_token = await self.id_token_extractor.extract(request)
-                    if not extracted_id_token:
-                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
-
-                    token_or_extracted_id_token = extracted_id_token
-                else:
-                    token_or_extracted_id_token = token
-
-            user_info: OIDCUserModel = await self.userinfo(async_client, token_or_extracted_id_token)
+            print(token)
+            user_info: OIDCUserModel = await self.userinfo(async_client, token)
             logger.debug("OIDCUserModel object.", user_info=user_info)
             return user_info
 
