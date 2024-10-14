@@ -161,7 +161,7 @@ class TokenExtractor(HTTPBearer):
     Specifically designed for HTTP Authorization header token extraction.
     """
 
-    def __init__(self, auto_error: bool = True):
+    def __init__(self, auto_error: bool = False):
         super().__init__(scheme_name="Token", auto_error=auto_error)
 
     async def __call__(self, request: Request, token: str | None = None) -> str | None:
