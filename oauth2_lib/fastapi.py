@@ -23,7 +23,6 @@ from fastapi.security.http import HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
-from starlette.status import HTTP_403_FORBIDDEN
 from starlette.websockets import WebSocket
 from structlog import get_logger
 
@@ -155,6 +154,45 @@ class HttpBearerExtractor(IdTokenExtractor):
         return credential.credentials if credential else None
 
 
+class TokenExtractor(HTTPBearer):
+    """Extracts tokens from HTTP requests.
+
+    Specifically designed for HTTP Authorization header token extraction.
+    """
+
+    def __init__(self, auto_error: bool = True):
+        super().__init__(scheme_name="Token", auto_error=auto_error)
+
+    async def __call__(self, request: Request, token: str | None = None) -> str | None:
+        """
+        Extract the token from the request.
+        :param request:
+        :param token:
+        :return:
+        """
+        # Handle WebSocket requests separately only to check for token presence.
+        if isinstance(request, WebSocket):
+            if token is None:
+                raise HTTPException(
+                    status_code=HTTPStatus.FORBIDDEN,
+                    detail="Not authenticated",
+                )
+            token_or_extracted_id_token = token
+        else:
+            request = cast(Request, request)
+
+            if token is None:
+                credentials = await super().__call__(request)
+                if not credentials:
+                    return None
+
+                token_or_extracted_id_token = credentials.credentials
+            else:
+                token_or_extracted_id_token = token
+
+        return token_or_extracted_id_token
+
+
 class OIDCAuth(Authentication):
     """Implements OIDC authentication.
 
@@ -181,7 +219,7 @@ class OIDCAuth(Authentication):
 
         self.openid_config: OIDCConfig | None = None
 
-    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> OIDCUserModel | None:
+    async def authenticate(self, request: Request, token: str | None = None, is_strawberry_request: bool = False) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
@@ -194,14 +232,20 @@ class OIDCAuth(Authentication):
             OIDCUserModel object.
 
         """
-        print("authenticate, igor was hier")
         if not oauth2lib_settings.OAUTH2_ACTIVE:
             return None
+
+        if await self.is_bypassable_request(request):
+            return None
+
+        if is_strawberry_request:
+            token = await self.id_token_extractor.extract(request)
+            if not token:
+                return None
 
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
             await self.check_openid_config(async_client)
 
-            print(token)
             user_info: OIDCUserModel = await self.userinfo(async_client, token)
             logger.debug("OIDCUserModel object.", user_info=user_info)
             return user_info

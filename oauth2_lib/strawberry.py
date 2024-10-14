@@ -56,7 +56,7 @@ class OauthContext(BaseContext):
             return None
 
         try:
-            return await self.auth_manager.authentication.authenticate(self.request)
+            return await self.auth_manager.authentication.authenticate(self.request, is_strawberry_request=True)
         except HTTPException as exc:
             logger.debug("User is not authenticated", status_code=exc.status_code, detail=exc.detail)
             return None
