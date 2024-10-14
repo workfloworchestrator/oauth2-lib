@@ -165,11 +165,15 @@ class TokenExtractor(HTTPBearer):
         super().__init__(scheme_name="Token", auto_error=auto_error)
 
     async def __call__(self, request: Request, token: str | None = None) -> str | None:
-        """
-        Extract the token from the request.
-        :param request:
-        :param token:
-        :return:
+        """Extract the token from the request.
+
+        Args:
+            request: Fastapi Request object.
+            token: token
+
+        Returns:
+            str: The token extracted from the request.
+
         """
         # Handle WebSocket requests separately only to check for token presence.
         if isinstance(request, WebSocket):
@@ -220,7 +224,9 @@ class OIDCAuth(Authentication):
 
         self.openid_config: OIDCConfig | None = None
 
-    async def authenticate(self, request: Request, token: str | None = None, is_strawberry_request: bool = False) -> OIDCUserModel | None:
+    async def authenticate(
+        self, request: Request, token: str | None = None, is_strawberry_request: bool = False
+    ) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
@@ -228,6 +234,7 @@ class OIDCAuth(Authentication):
         Args:
             request: Starlette request/websocket method.
             token: Optional value to directly pass a token.
+            is_strawberry_request: argument to signify strawberry request.
 
         Returns:
             OIDCUserModel object.
