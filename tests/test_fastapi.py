@@ -8,7 +8,7 @@ from fastapi.requests import Request
 from httpx import AsyncClient, BasicAuth
 from starlette.websockets import WebSocket
 
-from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel
+from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel, TokenExtractor
 from oauth2_lib.settings import oauth2lib_settings
 from tests.conftest import MockResponse
 
@@ -165,7 +165,8 @@ async def test_authenticate_success(make_mock_async_client, discovery, oidc_auth
         request = mock.MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer valid_token"}
 
-        user = await oidc_auth.authenticate(request)
+        token = await TokenExtractor().__call__(request)
+        user = await oidc_auth.authenticate(request, token)
         assert user == user_info_matching, "Authentication failed for a valid token"
 
 
