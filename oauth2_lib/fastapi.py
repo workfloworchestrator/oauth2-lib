@@ -126,7 +126,7 @@ class Authentication(ABC):
     """
 
     @abstractmethod
-    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> dict | None:
+    async def authenticate(self, request: Request, token: str | None = None) -> dict | None:
         """Authenticate the user."""
         pass
 
@@ -164,7 +164,7 @@ class TokenExtractor(HTTPBearer):
     def __init__(self, auto_error: bool = False):
         super().__init__(scheme_name="Token", auto_error=auto_error)
 
-    async def __call__(self, request: Request, token: str | None = None) -> str | None:
+    async def __call__(self, request: HTTPConnection, token: str | None = None) -> str | None: # type: ignore
         """Extract the token from the request.
 
         Args:
