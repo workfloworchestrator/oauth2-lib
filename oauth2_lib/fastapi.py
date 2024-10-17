@@ -148,7 +148,7 @@ class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
     Specifically designed for HTTP Authorization header token extraction.
     """
 
-    async def __call__(self, request: Request ) -> Optional[HTTPAuthorizationCredentials]:
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
         """Extract the Credentials from the request."""
         return await self.extract(request)
 
@@ -185,10 +185,7 @@ class OIDCAuth(Authentication):
 
         self.openid_config: OIDCConfig | None = None
 
-
-    async def authenticate(
-        self, request: Request, token: str | None = None
-    ) -> OIDCUserModel | None:
+    async def authenticate(self, request: Request, token: str | None = None) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
