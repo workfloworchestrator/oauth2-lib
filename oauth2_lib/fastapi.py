@@ -19,7 +19,7 @@ from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from fastapi.requests import Request
-from fastapi.security.http import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
