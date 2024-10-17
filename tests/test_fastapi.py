@@ -8,7 +8,7 @@ from fastapi.requests import Request
 from httpx import AsyncClient, BasicAuth
 from starlette.websockets import WebSocket
 
-from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel, TokenExtractor
+from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
 from tests.conftest import MockResponse
 
@@ -144,7 +144,7 @@ def test_oidc_auth_initialization_default_extractor(oidc_auth):
 async def test_extract_token_success():
     request = mock.MagicMock()
     request.headers = {"Authorization": "Bearer example_token"}
-    extractor = HttpBearerExtractor()
+    extractor = HttpBearerExtractor(auto_error=False)
     assert await extractor.extract(request) == "example_token", "Token extraction failed"
 
 
@@ -152,7 +152,7 @@ async def test_extract_token_success():
 async def test_extract_token_returns_none():
     request = mock.MagicMock()
     request.headers = {}
-    extractor = HttpBearerExtractor()
+    extractor = HttpBearerExtractor(auto_error=False)
     assert await extractor.extract(request) is None
 
 
@@ -165,7 +165,9 @@ async def test_authenticate_success(make_mock_async_client, discovery, oidc_auth
         request = mock.MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer valid_token"}
 
-        token = await TokenExtractor().__call__(request)
+        http_bearer_extractor = HttpBearerExtractor(auto_error=False)
+        token = await http_bearer_extractor(request)
+        # token = await oidc_auth.id_token_extractor.extract(request)
         user = await oidc_auth.authenticate(request, token)
         assert user == user_info_matching, "Authentication failed for a valid token"
 
