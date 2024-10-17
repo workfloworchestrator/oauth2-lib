@@ -19,7 +19,7 @@ from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from fastapi.requests import Request
-from fastapi.security.http import HTTPBearer
+from fastapi.security.http import HTTPBearer, HTTPAuthorizationCredentials
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
@@ -142,60 +142,21 @@ class IdTokenExtractor(ABC):
         pass
 
 
-class HttpBearerExtractor(IdTokenExtractor):
+class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
     """Extracts bearer tokens using FastAPI's HTTPBearer.
 
     Specifically designed for HTTP Authorization header token extraction.
     """
 
+    async def __call__(self, request: Request ) -> Optional[HTTPAuthorizationCredentials]:
+        """Extract the Credentials from the request."""
+        return await self.extract(request)
+
     async def extract(self, request: Request) -> str | None:
-        http_bearer = HTTPBearer(auto_error=False)
-        credential = await http_bearer(request)
+        """Extract the token from the http_auth_credentials."""
+        http_auth_credentials = await super().__call__(request)
 
-        return credential.credentials if credential else None
-
-
-class TokenExtractor(HTTPBearer):
-    """Extracts tokens from HTTP requests.
-
-    Specifically designed for HTTP Authorization header token extraction.
-    """
-
-    def __init__(self, auto_error: bool = False):
-        super().__init__(scheme_name="Token", auto_error=auto_error)
-
-    async def __call__(self, request: HTTPConnection, token: str | None = None) -> str | None:  # type: ignore
-        """Extract the token from the request.
-
-        Args:
-            request: Fastapi Request object.
-            token: token
-
-        Returns:
-            str: The token extracted from the request.
-
-        """
-        # Handle WebSocket requests separately only to check for token presence.
-        if isinstance(request, WebSocket):
-            if token is None:
-                raise HTTPException(
-                    status_code=HTTPStatus.FORBIDDEN,
-                    detail="Not authenticated",
-                )
-            token_or_extracted_id_token = token
-        else:
-            request = cast(Request, request)
-
-            if token is None:
-                credentials = await super().__call__(request)
-                if not credentials:
-                    return None
-
-                token_or_extracted_id_token = credentials.credentials
-            else:
-                token_or_extracted_id_token = token
-
-        return token_or_extracted_id_token
+        return http_auth_credentials.credentials if http_auth_credentials else None
 
 
 class OIDCAuth(Authentication):
@@ -224,8 +185,9 @@ class OIDCAuth(Authentication):
 
         self.openid_config: OIDCConfig | None = None
 
+
     async def authenticate(
-        self, request: Request, token: str | None = None, is_strawberry_request: bool = False
+        self, request: Request, token: str | None = None
     ) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
@@ -234,7 +196,6 @@ class OIDCAuth(Authentication):
         Args:
             request: Starlette request/websocket method.
             token: Optional value to directly pass a token.
-            is_strawberry_request: argument to signify strawberry request.
 
         Returns:
             OIDCUserModel object.
@@ -245,9 +206,6 @@ class OIDCAuth(Authentication):
 
         if await self.is_bypassable_request(request):
             return None
-
-        if is_strawberry_request:
-            token = await self.id_token_extractor.extract(request)
 
         if not token:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
