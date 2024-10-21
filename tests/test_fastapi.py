@@ -112,7 +112,7 @@ def oidc_auth():
 async def test_openid_config_success(make_mock_async_client, discovery, oidc_auth):
     mock_async_client = make_mock_async_client(MockResponse(json=discovery))
     await oidc_auth.check_openid_config(mock_async_client.client)
-    assert oidc_auth.openid_config == OIDCConfig.parse_obj(discovery)
+    assert oidc_auth.openid_config == OIDCConfig(**discovery)
     mock_async_client.client.get.assert_called_once_with("openid_url/.well-known/openid-configuration")
     assert oidc_auth.openid_config.issuer == discovery["issuer"], "OpenID configuration not loaded correctly"
 

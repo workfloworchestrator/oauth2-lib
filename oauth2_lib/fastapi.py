@@ -253,7 +253,7 @@ class OIDCAuth(Authentication):
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail=f"Could not load openid config from {self.openid_config_url}",
             )
-        self.openid_config = OIDCConfig.parse_obj(response.json())
+        self.openid_config = OIDCConfig(**response.json())
 
 
 class Authorization(ABC):
@@ -299,7 +299,7 @@ class OPAMixin:
 
         json_result = result.json()
         logger.debug("Received decision from policy agent", decision=json_result)
-        return OPAResult.parse_obj(json_result)
+        return OPAResult(**json_result)
 
     def evaluate_decision(self, decision: OPAResult, **context: dict[str, Any]) -> bool:
         did = decision.decision_id

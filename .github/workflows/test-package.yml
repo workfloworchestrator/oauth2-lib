@@ -13,7 +13,6 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
-        pydantic-version: ['1.*', '2.*']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -26,8 +25,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install flit
           flit install --deps develop
-          pip install -U "pydantic==${{ matrix.pydantic-version }}"
-          pip install pydantic_settings || true
       - name: Check formatting
         run: |
           black --check .
@@ -42,16 +39,8 @@ jobs:
           apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
       - name: Test with pytest
         run: |
-          pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc
-        env:
-          COVERAGE_FILE: reports/.coverage.${{ matrix.python-version }}
-      - name: Upload pytest test results
-        uses: actions/upload-artifact@v2
-        with:
-          name: reports
-          path: reports
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ matrix.pydantic-version == '2.*' }} && ${{ always() }}
+          mkdir reports
+          pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
   coverage-combine:
     needs: [build]
     runs-on: ubuntu-latest
@@ -61,7 +50,7 @@ jobs:
         with:
           python-version: '3.8'
       - name: Get coverage files
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: reports
           path: reports
