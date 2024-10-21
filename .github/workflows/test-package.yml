@@ -41,27 +41,27 @@ jobs:
         run: |
           mkdir reports
           pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
-  coverage-combine:
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-      - name: Get coverage files
-        uses: actions/download-artifact@v4
-        with:
-          name: reports
-          path: reports
-      - run: pip install coverage[toml]
-      - run: ls -la reports
-      - run: coverage combine reports
-      - run: coverage report
-      - run: coverage xml
-      - name: "Upload coverage to Codecov"
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
-          files: ./coverage.xml
+#  coverage-combine:
+#    needs: [build]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: actions/setup-python@v5
+#        with:
+#          python-version: '3.8'
+#      - name: Get coverage files
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: reports
+#          path: reports
+#      - run: pip install coverage[toml]
+#      - run: ls -la reports
+#      - run: coverage combine reports
+#      - run: coverage report
+#      - run: coverage xml
+#      - name: "Upload coverage to Codecov"
+#        uses: codecov/codecov-action@v3
+#        with:
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          fail_ci_if_error: true
+#          files: ./coverage.xml
