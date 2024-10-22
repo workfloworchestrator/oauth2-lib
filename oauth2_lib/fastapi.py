@@ -147,6 +147,7 @@ class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
 
     Specifically designed for HTTP Authorization header token extraction.
     """
+
     def __init__(self, auto_error: bool = False):
         super().__init__(auto_error=auto_error)
 
