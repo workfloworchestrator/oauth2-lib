@@ -26,7 +26,7 @@ from strawberry.types import Info
 from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.types.info import RootValueType
 
-from oauth2_lib.fastapi import AuthManager, OIDCUserModel
+from oauth2_lib.fastapi import AuthManager, HttpBearerExtractor, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
 
 logger = structlog.get_logger(__name__)
@@ -56,7 +56,11 @@ class OauthContext(BaseContext):
             return None
 
         try:
-            return await self.auth_manager.authentication.authenticate(self.request)
+            http_bearer_extractor = HttpBearerExtractor(auto_error=False)
+            http_authorization_credentials = await http_bearer_extractor(self.request)
+
+            token = http_authorization_credentials.credentials if http_authorization_credentials else None
+            return await self.auth_manager.authentication.authenticate(self.request, token)
         except HTTPException as exc:
             logger.debug("User is not authenticated", status_code=exc.status_code, detail=exc.detail)
             return None

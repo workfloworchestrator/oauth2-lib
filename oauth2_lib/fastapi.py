@@ -19,7 +19,7 @@ from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from fastapi.requests import Request
-from fastapi.security.http import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
@@ -126,7 +126,7 @@ class Authentication(ABC):
     """
 
     @abstractmethod
-    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> dict | None:
+    async def authenticate(self, request: Request, token: str | None = None) -> dict | None:
         """Authenticate the user."""
         pass
 
@@ -142,17 +142,24 @@ class IdTokenExtractor(ABC):
         pass
 
 
-class HttpBearerExtractor(IdTokenExtractor):
+class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
     """Extracts bearer tokens using FastAPI's HTTPBearer.
 
     Specifically designed for HTTP Authorization header token extraction.
     """
 
-    async def extract(self, request: Request) -> str | None:
-        http_bearer = HTTPBearer(auto_error=False)
-        credential = await http_bearer(request)
+    def __init__(self, auto_error: bool = False):
+        super().__init__(auto_error=auto_error)
 
-        return credential.credentials if credential else None
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+        """Extract the Authorization header from the request."""
+        return await super().__call__(request)
+
+    async def extract(self, request: Request) -> str | None:
+        """Extract the token from the Authorization header in the request."""
+        http_auth_credentials = await super().__call__(request)
+
+        return http_auth_credentials.credentials if http_auth_credentials else None
 
 
 class OIDCAuth(Authentication):
@@ -168,11 +175,7 @@ class OIDCAuth(Authentication):
         resource_server_id: str,
         resource_server_secret: str,
         oidc_user_model_cls: type[OIDCUserModel],
-        id_token_extractor: IdTokenExtractor | None = None,
     ):
-        if not id_token_extractor:
-            self.id_token_extractor = HttpBearerExtractor()
-
         self.openid_url = openid_url
         self.openid_config_url = openid_config_url
         self.resource_server_id = resource_server_id
@@ -181,7 +184,7 @@ class OIDCAuth(Authentication):
 
         self.openid_config: OIDCConfig | None = None
 
-    async def authenticate(self, request: HTTPConnection, token: str | None = None) -> OIDCUserModel | None:
+    async def authenticate(self, request: Request, token: str | None = None) -> OIDCUserModel | None:
         """Return the OIDC user from OIDC introspect endpoint.
 
         This is used as a security module in Fastapi projects
@@ -197,33 +200,16 @@ class OIDCAuth(Authentication):
         if not oauth2lib_settings.OAUTH2_ACTIVE:
             return None
 
+        if await self.is_bypassable_request(request):
+            return None
+
+        if not token:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
             await self.check_openid_config(async_client)
 
-            # Handle WebSocket requests separately only to check for token presence.
-            if isinstance(request, WebSocket):
-                if token is None:
-                    raise HTTPException(
-                        status_code=HTTPStatus.FORBIDDEN,
-                        detail="Not authenticated",
-                    )
-                token_or_extracted_id_token = token
-            else:
-                request = cast(Request, request)
-
-                if await self.is_bypassable_request(request):
-                    return None
-
-                if token is None:
-                    extracted_id_token = await self.id_token_extractor.extract(request)
-                    if not extracted_id_token:
-                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
-
-                    token_or_extracted_id_token = extracted_id_token
-                else:
-                    token_or_extracted_id_token = token
-
-            user_info: OIDCUserModel = await self.userinfo(async_client, token_or_extracted_id_token)
+            user_info: OIDCUserModel = await self.userinfo(async_client, token)
             logger.debug("OIDCUserModel object.", user_info=user_info)
             return user_info
 

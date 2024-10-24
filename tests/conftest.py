@@ -38,7 +38,7 @@ def make_mock_async_client():
     Pass a MockResponse for single or list for multiple sequential HTTP responses.
     """
 
-    def _make_mock_async_client(mock_response: MockResponse | list[MockResponse] | None = None):
+    def _make_mock_async_client(mock_response: MockResponse | list[MockResponse] | None = None) -> AsyncClientMock:
         mock_async_client = AsyncMock(spec=AsyncClient)
 
         mock_responses = ([mock_response] if isinstance(mock_response, MockResponse) else mock_response) or []
