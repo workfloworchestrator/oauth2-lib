@@ -175,11 +175,7 @@ class OIDCAuth(Authentication):
         resource_server_id: str,
         resource_server_secret: str,
         oidc_user_model_cls: type[OIDCUserModel],
-        id_token_extractor: IdTokenExtractor | None = None,
     ):
-        if not id_token_extractor:
-            self.id_token_extractor = HttpBearerExtractor()
-
         self.openid_url = openid_url
         self.openid_config_url = openid_config_url
         self.resource_server_id = resource_server_id

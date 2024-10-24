@@ -1,6 +1,7 @@
 import pytest
 import strawberry
 from fastapi import Depends, FastAPI
+from httpx._client import AsyncClient
 from starlette.requests import Request
 from starlette.testclient import TestClient
 from strawberry.fastapi import GraphQLRouter
@@ -17,7 +18,7 @@ from tests.test_fastapi import user_info_matching
 
 async def get_oidc_authentication():
     class OIDCAuthMock(OIDCAuth):
-        async def userinfo(self, request: Request, token: str | None = None) -> OIDCUserModel | None:
+        async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
             return user_info_matching
 
     return OIDCAuthMock("openid_url", "openid_url/.well-known/openid-configuration", "id", "secret", OIDCUserModel)
@@ -57,7 +58,8 @@ def mock_graphql_app():  # noqa: C901
             def book(self) -> BookType:
                 return BookType(title="test title", author="test author")
 
-            @strawberry.field(description="query book nested auth test")
+            # Known issue with strawberry: https://github.com/strawberry-graphql/strawberry/issues/1929
+            @strawberry.field(description="query book nested auth test")  # type: ignore
             def book_nested_auth(self) -> bookNestedAuthType:
                 return bookNestedAuthType(title="test title")
 
@@ -76,7 +78,7 @@ def mock_graphql_app():  # noqa: C901
 
         app = FastAPI()
         schema = strawberry.Schema(query=Query, mutation=Mutation)
-        graphql_app = GraphQLRouter(schema, context_getter=get_context)
+        graphql_app: GraphQLRouter = GraphQLRouter(schema, context_getter=get_context)
         app.include_router(graphql_app, prefix="/graphql")
 
         return TestClient(app)

@@ -134,12 +134,6 @@ async def test_userinfo_success_with_mock(oidc_auth):
     assert user["sub"] == "hoi", "User info not retrieved correctly"
 
 
-def test_oidc_auth_initialization_default_extractor(oidc_auth):
-    assert isinstance(
-        oidc_auth.id_token_extractor, HttpBearerExtractor
-    ), "Default ID token extractor should be HttpBearerExtractor"
-
-
 @pytest.mark.asyncio
 async def test_extract_token_success():
     request = mock.MagicMock()
