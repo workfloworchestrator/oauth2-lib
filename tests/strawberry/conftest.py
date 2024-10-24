@@ -47,13 +47,13 @@ def mock_graphql_app():  # noqa: C901
         class bookNestedAuthType:
             title: str
 
-            @authenticated_field("test authentication for book author")
+            @authenticated_field("test authentication for book author")  # type: ignore
             def author(self) -> str:
                 return f"{self.title} author"
 
         @strawberry.type
         class Query:
-            @authenticated_field("query book test")
+            @authenticated_field("query book test")  # type: ignore
             def book(self) -> BookType:
                 return BookType(title="test title", author="test author")
 
@@ -62,13 +62,13 @@ def mock_graphql_app():  # noqa: C901
             def book_nested_auth(self) -> bookNestedAuthType:
                 return bookNestedAuthType(title="test title")
 
-            @authenticated_federated_field("federated field book test")
+            @authenticated_federated_field("federated field book test")  # type: ignore
             def federated_book(self) -> BookType:
                 return BookType(title="test title federated field", author="test author federated field")
 
         @strawberry.type
         class Mutation:
-            @authenticated_mutation_field("mutation test")
+            @authenticated_mutation_field("mutation test")  # type: ignore
             def add_book(self, title: str, author: str) -> BookType:
                 return BookType(title=title, author=author)
 
