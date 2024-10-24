@@ -58,15 +58,15 @@ def make_api_client(url=BASE_URL, token=VALID_TOKEN):
             pass
 
         def request(
-                self,
-                method,
-                url,
-                query_params=None,
-                headers=None,
-                post_params=None,
-                body=None,
-                _preload_content=True,
-                _request_timeout=None,
+            self,
+            method,
+            url,
+            query_params=None,
+            headers=None,
+            post_params=None,
+            body=None,
+            _preload_content=True,
+            _request_timeout=None,
         ):
             headers = {} if headers is None else headers
             http = urllib3.PoolManager()
