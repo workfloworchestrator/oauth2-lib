@@ -152,11 +152,11 @@ class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
         super().__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
-        """Extract the Credentials from the request."""
+        """Extract the Authorization header from the request."""
         return await super().__call__(request)
 
     async def extract(self, request: Request) -> str | None:
-        """Extract the token from the http_auth_credentials."""
+        """Extract the token from the Authorization header in the request."""
         http_auth_credentials = await super().__call__(request)
 
         return http_auth_credentials.credentials if http_auth_credentials else None
