@@ -2,7 +2,6 @@ import pytest
 import strawberry
 from fastapi import Depends, FastAPI
 from httpx._client import AsyncClient
-from starlette.requests import Request
 from starlette.testclient import TestClient
 from strawberry.fastapi import GraphQLRouter
 

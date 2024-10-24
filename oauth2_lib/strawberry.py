@@ -24,10 +24,9 @@ from starlette.requests import Request
 from strawberry import BasePermission
 from strawberry.fastapi import BaseContext
 from strawberry.types import Info
-from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.types.info import RootValueType
 
-from oauth2_lib.fastapi import AuthManager, OIDCUserModel, HttpBearerExtractor
+from oauth2_lib.fastapi import AuthManager, HttpBearerExtractor, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
 
 logger = structlog.get_logger(__name__)
