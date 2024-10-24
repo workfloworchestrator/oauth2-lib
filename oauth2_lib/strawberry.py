@@ -12,8 +12,7 @@
 # limitations under the License.
 from collections.abc import Callable
 from enum import StrEnum, auto
-from functools import wraps
-from typing import Any, TypeVar, cast
+from typing import Any
 
 import asyncstdlib
 import strawberry
@@ -24,15 +23,13 @@ from starlette.requests import Request
 from strawberry import BasePermission
 from strawberry.fastapi import BaseContext
 from strawberry.types import Info
+from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.types.info import RootValueType
 
 from oauth2_lib.fastapi import AuthManager, HttpBearerExtractor, OIDCUserModel
 from oauth2_lib.settings import oauth2lib_settings
 
 logger = structlog.get_logger(__name__)
-
-
-F = TypeVar("F", bound=Callable[..., Any])
 
 
 class OauthContext(BaseContext):
@@ -204,75 +201,48 @@ class IsAuthorizedForMutation(BasePermission):
 
 def authenticated_field(
     description: str,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
     deprecation_reason: str | None = None,
     permission_classes: list[type[BasePermission]] | None = None,
-) -> Callable[[F], F]:
-    def decorator(func: F) -> F:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return func(*args, **kwargs)
-
-        permissions = permission_classes if permission_classes else []
-        return cast(
-            F,
-            strawberry.field(
-                description=description,
-                resolver=wrapper,
-                deprecation_reason=deprecation_reason,
-                permission_classes=[IsAuthenticatedForQuery, IsAuthorizedForQuery] + permissions,
-            ),
-        )
-
-    return decorator
+) -> Any:
+    permissions = permission_classes if permission_classes else []
+    return strawberry.field(
+        description=description,
+        resolver=resolver,  # type: ignore
+        deprecation_reason=deprecation_reason,
+        permission_classes=[IsAuthenticatedForQuery, IsAuthorizedForQuery] + permissions,
+    )
 
 
 def authenticated_mutation_field(
     description: str,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
     deprecation_reason: str | None = None,
     permission_classes: list[type[BasePermission]] | None = None,
-) -> Callable[[F], F]:
-    def decorator(func: F) -> F:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return func(*args, **kwargs)
-
-        permissions = permission_classes if permission_classes else []
-        return cast(
-            F,
-            strawberry.field(
-                description=description,
-                resolver=wrapper,
-                deprecation_reason=deprecation_reason,
-                permission_classes=[IsAuthenticatedForMutation, IsAuthorizedForMutation] + permissions,
-            ),
-        )
-
-    return decorator
+) -> Any:
+    permissions = permission_classes if permission_classes else []
+    return strawberry.field(
+        description=description,
+        resolver=resolver,  # type: ignore
+        deprecation_reason=deprecation_reason,
+        permission_classes=[IsAuthenticatedForMutation, IsAuthorizedForMutation] + permissions,
+    )
 
 
 def authenticated_federated_field(  # type: ignore
     description: str,
+    resolver: StrawberryResolver | Callable | staticmethod | classmethod | None = None,
     deprecation_reason: str | None = None,
     requires: list[str] | None = None,
     permission_classes: list[type[BasePermission]] | None = None,
     **kwargs,
-) -> Callable[[F], F]:
-    def decorator(func: F) -> F:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return func(*args, **kwargs)
-
-        permissions = permission_classes if permission_classes else []
-        return cast(
-            F,
-            strawberry.federation.field(
-                description=description,
-                resolver=wrapper,
-                deprecation_reason=deprecation_reason,
-                permission_classes=[IsAuthenticatedForQuery, IsAuthorizedForQuery] + permissions,
-                requires=requires,
-                **kwargs,
-            ),
-        )
-
-    return decorator
+) -> Any:
+    permissions = permission_classes if permission_classes else []
+    return strawberry.federation.field(
+        description=description,
+        resolver=resolver,  # type: ignore
+        deprecation_reason=deprecation_reason,
+        permission_classes=[IsAuthenticatedForQuery, IsAuthorizedForQuery] + permissions,
+        requires=requires,
+        **kwargs,
+    )
