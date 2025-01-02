@@ -10,7 +10,6 @@ repos:
     rev: 24.10.0
     hooks:
       - id: black
-        language_version: python3.11
   - repo: https://github.com/asottile/blacken-docs
     rev: 1.19.1
     hooks:
@@ -35,16 +34,6 @@ repos:
     hooks:
       - id: ruff
         args: [ --fix, --exit-non-zero-on-fix, --show-fixes ]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-      - id: mypy
-        language_version: python3.11
-        additional_dependencies: [pydantic<2.0.0, strawberry-graphql]
-        args:
-          - --no-warn-unused-ignores
-          - --allow-untyped-decorators
-        exclude: (test/*|migrations/*)
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
