@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ['3.11', '3.12', '3.13']
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -25,18 +25,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install flit
           flit install --deps develop
-      - name: Check formatting
-        run: |
-          black --check .
-      - name: Lint with ruff
-        run: |
-          ruff check .
-      - name: MyPy
-        run: |
-          mypy -p oauth2_lib
+      - name: Mypy
+        run: mypy .
       - name: License headers
         run: |
           apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1
       - name: Test with pytest
         run: |
           mkdir reports

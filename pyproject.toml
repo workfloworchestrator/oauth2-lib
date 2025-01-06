@@ -25,6 +25,7 @@ classifiers = [
     "Intended Audience :: Telecommunications Industry",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
 ]
@@ -40,7 +41,7 @@ requires = [
     "asyncstdlib",
 ]
 description-file = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 
 [tool.flit.metadata.urls]
 Documentation = "https://workfloworchestrator.org/"
@@ -68,7 +69,7 @@ skip = ["src", "venv"]
 
 [tool.black]
 line-length = 120
-target-version = ["py310"]
+target-version = ["py311"]
 exclude = '''
 (
   /(

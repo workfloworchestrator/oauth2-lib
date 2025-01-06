@@ -4,41 +4,92 @@
 [![Supported python versions](https://img.shields.io/pypi/pyversions/oauth2-lib.svg?color=%2334D058)](https://pypi.org/project/oauth2-lib)
 [![codecov](https://codecov.io/gh/workfloworchestrator/oauth2-lib/graph/badge.svg?token=JDMMBBOVM4)](https://codecov.io/gh/workfloworchestrator/oauth2-lib)
 
-This Project contains a Mixin class that wraps an openapi-codegen python client, to inject Opentelemetry spans
-and api call retries. It also contains a number of FastAPI dependencies which enables Policy enforcement offloading
-to Open Policy Agent.
+This project contains a number of classes to perform authentication (AuthN) and authorization (AuthZ) in a FastAPI application.
 
-The project contains a number of OIDC classes that are tailored to the SURF environment.
+They can be found in [oauth2_lib/fastapi.py](oauth2_lib/fastapi.py).
+Most notable are:
+- `OIDCAuth`: AuthN implementation that authenticates a user against a OIDC backend. You can subclass and implement `def userinfo()` as needed.
+  - To use a different AuthN method, subclass the `Authentication` base class.
+- `OIDCUserModel`: model of the data returned by `OIDCAuth`. You can subclass this to rename and/or add fields.
+- `OPAAuthorization`: AuthZ implementation that authorizes a user's HTTP request against an Open Policy Agent (OPA) instance.
+  - To use a different AuthZ method, subclass the `Authorization` base class.
+- `GraphQLOPAAuthorization`: AuthZ implementation that authorizes a user's GraphQL query against an Open Policy Agent (OPA) instance.
+  - To use a different AuthZ method, subclass the `GraphqlAuthorization` base class.
+- `OPAResult`: model of the data returned by `OPAAuthorization` and `GraphQLOPAAuthorization`.
 
+The [orchestrator-core documentation](https://workfloworchestrator.org/orchestrator-core) has a section on Authentication and Authorization that describes how to use/override these classes.
 
 ## Installation
-This can be done as follows:
+
+To install the package from PyPI:
+
+```bash
+pip install oauth2-lib
+```
+
+## Development
+
+### Virtual Environment
+
+Steps to setup a virtual environment.
 
 #### Step 1:
-First install flit to enable you to develop on this repository
+
+Create and activate a python3 virtualenv.
+
+#### Step 2:
+
+Install flit to enable you to develop on this repository:
+
 ```bash
 pip install flit
 ```
-#### Step 2:
 
-To install all development dependencies
+#### Step 3:
+
+To install all development dependencies:
+
 ```bash
-flit install --deps develop --symlink
+flit install --deps develop
 ```
 
-for pydantic V2 you also need to install pydantic_settings: `pip install pydantic_settings`.
+All steps combined into 1 command:
 
-This way all requirements are installed for testing and development.
+```bash
+python -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install flit && flit install --deps develop
+```
 
-## Development
+### Unit tests
+
+Activate the virtualenv and run the unit tests with:
+
+```bash
+pytest
+```
+
+### Pre-commit
+
+This project uses [pre-commit](https://pre-commit.com/) to automatically run a number of checks before making a git commit.
+The same checks will be performed in the CI pipeline so this can save you some time.
+
+First ensure you have pre-commit installed.
+It is recommended to install it outside the virtualenv.
+On Linux and Mac, pre-commit is available in most package managers. Alternatively you can install it globally with [pipx](https://github.com/pypa/pipx).
+
+Once pre-commit is installed, go into the project root and enable it:
+```bash
+pre-commit install
+```
+
+This should output `pre-commit installed at .git/hooks/pre-commit`. The next time you run `git commit` the pre-commit hooks will validate your changes.
+
+### Bump version
+
 Depending on the feature type, run bumpversion (patch|minor|major) to increment the version you are working on. For
 example to update the increment the patch version use
 ```bash
 bumpversion patch
 ```
-
-## For MAC users looking and experimenting with Opentelemetry (OTEL)
-https://github.com/jaegertracing/jaeger-client-node/issues/124#issuecomment-324222456
 
 ## Supported Python versions
 

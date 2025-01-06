@@ -77,7 +77,7 @@ def mock_graphql_app():  # noqa: C901
 
         app = FastAPI()
         schema = strawberry.Schema(query=Query, mutation=Mutation)
-        graphql_app: GraphQLRouter = GraphQLRouter(schema, context_getter=get_context)
+        graphql_app: GraphQLRouter = GraphQLRouter(schema, context_getter=get_context)  # type: ignore[arg-type]
         app.include_router(graphql_app, prefix="/graphql")
 
         return TestClient(app)

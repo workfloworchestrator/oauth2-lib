@@ -1,4 +1,4 @@
-# Copyright 2019-2024 SURF.
+# Copyright 2019-2025 SURF.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -151,7 +151,7 @@ class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
     def __init__(self, auto_error: bool = False):
         super().__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         """Extract the Authorization header from the request."""
         return await super().__call__(request)
 
