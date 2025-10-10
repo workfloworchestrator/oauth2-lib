@@ -105,14 +105,14 @@ async def is_authenticated(info: OauthInfo) -> bool:
     return current_user is not None
 
 
-async def is_authorized(info: OauthInfo, path: str) -> bool:
+async def is_authorized(info: OauthInfo, path: str, method: str) -> bool:
     """Check that the user is allowed to query/mutate this path."""
     context = info.context
     current_user = await context.get_current_user
     if not current_user:
         return False
 
-    authorization_decision = await context.auth_manager.graphql_authorization.authorize(path, current_user)
+    authorization_decision = await context.auth_manager.graphql_authorization.authorize(path, method, current_user)
     authorized = bool(authorization_decision)
     logger.debug(
         "Received graphql authorization decision",
@@ -172,7 +172,7 @@ class IsAuthorizedForQuery(BasePermission):
             return True
 
         path = get_query_path(info)
-        if await is_authorized(info, path):
+        if await is_authorized(info, path, "QUERY"):
             return True
 
         self.message = f"User is not authorized to query `{path}`"
@@ -192,7 +192,7 @@ class IsAuthorizedForMutation(BasePermission):
             return skip_mutation_auth_checks()
 
         path = get_mutation_path(info)
-        if await is_authorized(info, path):
+        if await is_authorized(info, path, "POST"):
             return True
 
         self.message = f"User is not authorized to execute mutation `{path}`"
