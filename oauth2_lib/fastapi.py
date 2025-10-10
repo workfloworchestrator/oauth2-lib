@@ -260,7 +260,7 @@ class GraphqlAuthorization(ABC):
     """
 
     @abstractmethod
-    async def authorize(self, request: RequestPath, user: OIDCUserModel) -> bool | None:
+    async def authorize(self, request: RequestPath, method: str, user: OIDCUserModel) -> bool | None:
         pass
 
 
