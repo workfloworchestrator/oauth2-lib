@@ -112,7 +112,7 @@ class AsyncAuthMixin:
         logger.debug("Acquiring new access token", force=force)
         self._token = await self._oauth_client.fetch_access_token()
 
-    def request(  # type:ignore
+    def request(  # type: ignore
         self,
         method,
         url,
@@ -127,20 +127,20 @@ class AsyncAuthMixin:
 
         try:
             self.add_client_creds_token_header(headers)
-            return super().request(  # type:ignore
+            return super().request(  # type: ignore
                 method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
             )
         except Exception as ex:
-            if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):  # type:ignore
+            if is_api_exception(ex) and ex.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):  # type: ignore
                 logger.warning("Access Denied. Token expired? Retrying.", api_exception=str(ex))
                 loop = new_event_loop()
                 loop.run_until_complete(self.refresh_client_creds_token(force=True))
                 self.add_client_creds_token_header(headers)
 
-                return super().request(  # type:ignore
+                return super().request(  # type: ignore
                     method, url, query_params, headers, post_params, body, _preload_content, _request_timeout
                 )
-            if is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type:ignore
+            if is_api_exception(ex) and ex.status == HTTPStatus.NOT_FOUND:  # type: ignore
                 logger.debug(ex, url=url)  # noqa: G200
                 raise
             logger.exception("Could not call API.", client=self.__class__.__name__)
