@@ -14,7 +14,7 @@ from tests.conftest import MockResponse
 
 user_info = {"active": True, "uids": ["boers"], "updated_at": 1582810910, "scope": "openid test:scope", "sub": "hoi"}
 
-user_info_matching: OIDCUserModel = {  # type:ignore
+user_info_matching: OIDCUserModel = {  # type: ignore
     "active": True,
     "edumember_is_member_of": ["urn:collab:org:surf.nl"],
     "eduperson_entitlement": ["urn:mace:surfnet.nl:surfnet.nl:sab:role:role0"],

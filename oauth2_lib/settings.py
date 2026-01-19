@@ -1,4 +1,4 @@
-# Copyright 2019-2025 SURF.
+# Copyright 2019-2026 SURF.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,12 +12,8 @@
 # limitations under the License.
 
 
-from pydantic import VERSION, Field
-
-if VERSION >= "2.0":
-    from pydantic_settings import BaseSettings
-else:
-    from pydantic import BaseSettings  # type: ignore[no-redef]
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Oauth2LibSettings(BaseSettings):
