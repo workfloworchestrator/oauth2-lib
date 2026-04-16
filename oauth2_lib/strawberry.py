@@ -243,6 +243,6 @@ def authenticated_federated_field(  # type: ignore
         resolver=resolver,  # type: ignore
         deprecation_reason=deprecation_reason,
         permission_classes=[IsAuthenticatedForQuery, IsAuthorizedForQuery] + permissions,
-        requires=requires,
+        requires=requires,  # type: ignore
         **kwargs,
     )
