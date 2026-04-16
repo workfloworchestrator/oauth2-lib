@@ -202,7 +202,7 @@ async def test_authenticate_token_extraction_failure(make_mock_async_client, dis
 
         with pytest.raises(HTTPException) as exc_info:
             await oidc_auth.authenticate(request)
-            assert exc_info.value.status_code == 403
+            assert exc_info.value.status_code == 401
             assert exc_info.value.detail == "Not authenticated"
 
 
@@ -221,5 +221,5 @@ async def test_unauthenticated_websocket_request_raises_403(oidc_auth):
     with pytest.raises(HTTPException) as exc_info:
         await oidc_auth.authenticate(websocket)
 
-    assert exc_info.value.status_code == 403, "Expected HTTP 403 error for unauthenticated websocket request"
+    assert exc_info.value.status_code == 401, "Expected HTTP 401 error for unauthenticated websocket request"
     assert exc_info.value.detail == "Not authenticated"

@@ -23,7 +23,7 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from httpx import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_401_UNAUTHORIZED
 from starlette.websockets import WebSocket
 from structlog import get_logger
 
@@ -204,7 +204,7 @@ class OIDCAuth(Authentication):
             return None
 
         if not token:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
         async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
             await self.check_openid_config(async_client)
