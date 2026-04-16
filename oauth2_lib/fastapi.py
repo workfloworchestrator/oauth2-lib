@@ -246,6 +246,12 @@ class Authorization(ABC):
     """Defines the authorization logic interface.
 
     Implementations must provide an async method to authorize based on request and user info.
+
+    This method should return:
+    * True: when authorized
+    * False: when not authorized
+    * Raise HTTPException (403 Forbidden): when setting custom `detail=` on failed authorization
+    * None: when authorization should be bypassed for local development
     """
 
     @abstractmethod
@@ -257,6 +263,12 @@ class GraphqlAuthorization(ABC):
     """Defines the graphql authorization logic interface.
 
     Implementations must provide an async method to authorize based on request and user info.
+
+    This method should return:
+    * True: when authorized
+    * False: when not authorized
+    * Raise HTTPException (403 Forbidden): when setting custom `detail=` on failed authorization
+    * None: when authorization should be bypassed for local development
     """
 
     @abstractmethod
@@ -288,6 +300,7 @@ class OPAMixin:
         return OPAResult(**json_result)
 
     def evaluate_decision(self, decision: OPAResult, **context: dict[str, Any]) -> bool:
+        """Evaluates OPAResult. Raises if auto_error, otherwise returns False on failure."""
         did = decision.decision_id
 
         if decision.result:
@@ -360,10 +373,14 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
     """Specializes OPA authorization for GraphQL operations.
 
     Customizable to handle partial results without raising HTTP 403.
+
+    By default, this class sets auto_error=False for use in Strawberry,
+    meaning **authorize will not raise on failure**.
+    Update this if needed.
     """
 
     def __init__(self, opa_url: str, auto_error: bool = False, opa_kwargs: Mapping[str, Any] | None = None):
-        # By default don't raise HTTP 403 because partial results are preferred
+        # default auto_error to False to not raise HTTP 403 because partial results are preferred
         super().__init__(opa_url, auto_error, opa_kwargs)
 
     async def authorize(self, request: RequestPath, method: str, user_info: OIDCUserModel) -> bool | None:
