@@ -33,30 +33,16 @@ pip install oauth2-lib
 
 Steps to setup a virtual environment.
 
-#### Step 1:
-
-Create and activate a python3 virtualenv.
-
-#### Step 2:
-
-Install flit to enable you to develop on this repository:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create the development environment:
 
 ```bash
-pip install flit
+uv sync --locked --group test --group dev
 ```
 
-#### Step 3:
-
-To install all development dependencies:
+Run project commands through that environment with `uv run`, for example:
 
 ```bash
-flit install --deps develop
-```
-
-All steps combined into 1 command:
-
-```bash
-python -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install flit && flit install --deps develop
+uv run pytest
 ```
 
 ### Unit tests

@@ -20,22 +20,24 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "0.12.3"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flit
-          flit install --deps develop
+        run: uv sync --locked --group test --group dev
       - name: Mypy
-        run: mypy .
+        run: uv run mypy .
       - name: License headers
         run: |
-          apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
+          uv run apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
       - name: Run pre-commit hooks
-        uses: pre-commit/action@v3.0.1
+        run: uv run pre-commit run --all-files
       - name: Test with pytest
         run: |
           mkdir reports
-          pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
+          uv run pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
 #  coverage-combine:
 #    needs: [build]
 #    runs-on: ubuntu-latest
