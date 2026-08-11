@@ -47,10 +47,10 @@ uv run pytest
 
 ### Unit tests
 
-Activate the virtualenv and run the unit tests with:
+Run the unit tests through the uv-managed environment:
 
 ```bash
-pytest
+uv run pytest
 ```
 
 ### Pre-commit
