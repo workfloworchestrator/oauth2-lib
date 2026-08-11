@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 from fastapi import HTTPException
+from httpx2 import NetworkError
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 
@@ -68,8 +69,17 @@ async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_reques
 
 
 @pytest.mark.asyncio
-async def test_opa_decision_network_or_type_error(make_mock_async_client, mock_request):
-    mock_async_client = make_mock_async_client(MockResponse(error=TypeError()))
+@pytest.mark.parametrize(
+    "make_error",
+    [
+        pytest.param(TypeError, id="TypeError"),
+        # Must be httpx2's NetworkError; httpx's is a different class and would escape the except in
+        # get_decision. Built per-case: a shared instance retains its traceback for the session.
+        pytest.param(lambda: NetworkError("connection refused"), id="NetworkError"),
+    ],
+)
+async def test_opa_decision_network_or_type_error(make_error, make_mock_async_client, mock_request):
+    mock_async_client = make_mock_async_client(MockResponse(error=make_error()))
 
     with mock.patch("oauth2_lib.fastapi.AsyncClient", return_value=mock_async_client):
         authorization = OPAAuthorization(opa_url="https://opa_url.test")
@@ -192,14 +202,3 @@ async def test_opa_decision_auto_error_allowed(make_mock_async_client, mock_requ
             }
         }
         mock_async_client.client.post.assert_called_with("https://opa_url.test", json=opa_input)
-
-
-# @pytest.mark.asyncio
-# async def test_opa_decision_opa_unavailable(make_mock_async_client, mock_request):
-#     mock_async_client = make_mock_async_client({"result": False, "decision_id": "8ef9daf0-1a23-4a6b-8433-c64ef028bee8"})
-
-#     opa_decision_security = opa_decision("https://opa_url.test", None)
-
-#     with pytest.raises(HTTPException) as exception:
-#         await opa_decision_security(mock_request, user_info_matching, mock_async_client)
-#     assert exception.value.status_code == 503

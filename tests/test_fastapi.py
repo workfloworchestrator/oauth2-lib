@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.exceptions import HTTPException
 from fastapi.requests import Request
-from httpx import AsyncClient, BasicAuth
+from httpx2 import AsyncClient, BasicAuth
 from starlette.websockets import WebSocket
 
 from oauth2_lib.fastapi import HttpBearerExtractor, OIDCAuth, OIDCConfig, OIDCUserModel
