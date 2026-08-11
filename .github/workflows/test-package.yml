@@ -13,6 +13,12 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        resolution: ['locked']
+        include:
+          - python-version: '3.11'
+            resolution: 'lowest-direct'
+          - python-version: '3.14'
+            resolution: 'highest'
       fail-fast: false
     steps:
       - uses: actions/checkout@v6
@@ -22,7 +28,13 @@ jobs:
           version: "0.12.3"
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: uv sync --locked --group test --group dev
+        run: |
+          case "${{ matrix.resolution }}" in
+            locked)        uv sync --locked --group test --group dev ;;
+            lowest-direct) uv sync --resolution lowest-direct --upgrade --group test --group dev ;;
+            highest)       uv sync --resolution highest --upgrade --group test --group dev ;;
+            *)             echo "::error::unknown resolution '${{ matrix.resolution }}'" && exit 1 ;;
+          esac
       - name: Mypy
         run: uv run mypy .
       - name: License headers
