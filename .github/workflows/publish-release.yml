@@ -18,7 +18,7 @@ jobs:
       # Prevent local tool.uv.sources entries from leaking into the artifact.
       run: uv build --no-sources
     - name: Upload dist artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: dist
         path: dist/
