@@ -13,4 +13,6 @@
 
 """This is the SURF Oauth2 module that interfaces with the oauth2 setup."""
 
-__version__ = "2.7.0"
+from importlib.metadata import version
+
+__version__ = version("oauth2-lib")

@@ -61,7 +61,7 @@ test = [
     "requests_mock",
     "urllib3_mock==0.3.3",
 ]
-dev = ["bumpversion", "pre-commit"]
+dev = ["pre-commit"]
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

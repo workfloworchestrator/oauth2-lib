@@ -69,13 +69,15 @@ pre-commit install
 
 This should output `pre-commit installed at .git/hooks/pre-commit`. The next time you run `git commit` the pre-commit hooks will validate your changes.
 
-### Bump version
+### Set the package version
 
-Depending on the feature type, run bumpversion (patch|minor|major) to increment the version you are working on. For
-example to update the increment the patch version use
+When a release version has been assigned, update the package metadata on a clean branch with `uv version`:
+
 ```bash
-bumpversion patch
+uv version 2.7.1
 ```
+
+Specify the full version explicitly so release candidates can be represented, for example `uv version 2.7.1rc1`.
 
 ## Supported Python versions
 
