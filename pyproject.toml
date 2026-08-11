@@ -31,22 +31,29 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
 ]
+# Floors are the oldest releases that CI's `uv sync --resolution lowest-direct` actually
+# resolves on the supported pythons; anything lower is silently backtracked past and so is
+# never tested. fastapi <0.100 pins pydantic<2, requests <2.26 caps idna<3, and asyncstdlib
+# has no release before 3.9.0.
 dependencies = [
-    "requests>=2.19.0",
+    "requests>=2.26.0",
     "structlog>=20.2.0",
-    "fastapi>=0.90.1",
+    "fastapi>=0.100.0",
     "httpx[http2]>=0.23.0",
     "authlib>=1.6.6",
     "pydantic>=2",
     "pydantic-settings>=2.0.1",
     "strawberry-graphql>=0.171.1",
-    "asyncstdlib>=3.2.0",
+    "asyncstdlib>=3.9.0",
 ]
 
 [project.urls]
 Documentation = "https://workfloworchestrator.org/"
 Homepage = "https://github.com/workfloworchestrator/oauth2-lib"
 
+# Local dependencies for development.
+# Lower bounds are required: CI runs `uv sync --resolution lowest-direct`, which
+# would otherwise resolve unbounded entries to their oldest release on PyPI.
 [dependency-groups]
 test = [
     "apache-license-check>=1.0.0",
@@ -64,18 +71,14 @@ test = [
 dev = ["pre-commit>=4.2.0"]
 
 [build-system]
-requires = ["uv_build>=0.12,<0.13"]
+requires = ["uv_build>=0.10,<0.13"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "oauth2_lib"
 module-root = ""
+# Ship the test suite in the sdist so downstream packagers can run it from the tarball.
 source-include = ["tests/**"]
-
-[tool.isort]
-profile = "black"
-line_length = 120
-skip = ["src", "venv"]
 
 [tool.black]
 line-length = 120

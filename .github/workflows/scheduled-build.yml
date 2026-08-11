@@ -21,8 +21,12 @@ jobs:
     uses: ./.github/workflows/test-package.yml
     needs: [check_week]
 
+  run_linting:
+    uses: ./.github/workflows/run-linting-tests.yml
+    needs: [check_week]
+
   slack:
-      needs: [check_week, run_build]
+      needs: [check_week, run_build, run_linting]
       runs-on: ubuntu-latest
       if: ${{ needs.check_week.outputs.should_cancel != '1' }}
       steps:
