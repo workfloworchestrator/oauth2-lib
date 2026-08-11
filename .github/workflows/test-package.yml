@@ -9,54 +9,50 @@ on:
 
 jobs:
   build:
+    name: "Unit tests (Python ${{ matrix.python-version }}, ${{ matrix.resolution }})"
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        resolution: ['locked']
+        # Every include entry must spell out both keys. GitHub only merges an include
+        # into an existing combination when it overwrites no original key; because
+        # `resolution` is an original key, these rows create new combinations that
+        # contain *only* the keys listed here. Omitting one would silently expand to
+        # an empty string below.
+        include:
+          # Floor of the declared dependency ranges. lowest-direct stops at 3.12:
+          # pydantic-core 2.1.2 (the pydantic>=2 floor) ships no 3.13+ wheel.
+          - python-version: '3.11'
+            resolution: 'lowest-direct'
+          - python-version: '3.12'
+            resolution: 'lowest-direct'
+          # Ceiling: latest release of everything, on the two newest pythons.
+          - python-version: '3.13'
+            resolution: 'highest'
+          - python-version: '3.14'
+            resolution: 'highest'
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v9.0.0
         with:
+          # Pinned to the version that generated uv.lock, so `--locked` cannot
+          # fail on an unrelated lockfile-format bump.
+          version: "0.12.3"
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
       - name: Install dependencies
+        # The 'dev' group (pre-commit) is not needed here; linting runs in
+        # run-linting-tests.yml. It is synced anyway as uv's default group.
         run: |
-          python -m pip install --upgrade pip
-          pip install flit
-          flit install --deps develop
-      - name: Mypy
-        run: mypy .
-      - name: License headers
-        run: |
-          apache-license-check --copyright "2019-`date +%Y` SURF" oauth2_lib
-      - name: Run pre-commit hooks
-        uses: pre-commit/action@v3.0.1
+          case "${{ matrix.resolution }}" in
+            locked)        uv sync --locked --group test ;;
+            lowest-direct) uv sync --resolution lowest-direct --upgrade --group test ;;
+            highest)       uv sync --resolution highest --upgrade --group test ;;
+            *)             echo "::error::unknown resolution '${{ matrix.resolution }}'" && exit 1 ;;
+          esac
       - name: Test with pytest
-        run: |
-          mkdir reports
-          pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
-#  coverage-combine:
-#    needs: [build]
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: actions/setup-python@v5
-#        with:
-#          python-version: '3.8'
-#      - name: Get coverage files
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: reports
-#          path: reports
-#      - run: pip install coverage[toml]
-#      - run: ls -la reports
-#      - run: coverage combine reports
-#      - run: coverage report
-#      - run: coverage xml
-#      - name: "Upload coverage to Codecov"
-#        uses: codecov/codecov-action@v3
-#        with:
-#          token: ${{ secrets.CODECOV_TOKEN }}
-#          fail_ci_if_error: true
-#          files: ./coverage.xml
+        # --no-sync: the non-locked resolutions deliberately deviate from uv.lock.
+        run: uv run --no-sync pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-report=xml

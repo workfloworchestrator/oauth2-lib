@@ -1,13 +1,14 @@
-[build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
-
-[tool.flit.metadata]
-module = "oauth2_lib"
-dist-name = "oauth2-lib"
-author = "SURF"
-author-email = "automation-beheer@surf.nl"
-home-page = "https://github.com/workfloworchestrator/oauth2-lib"
+[project]
+name = "oauth2-lib"
+version = "2.7.0"
+description = "Authentication and authorization utilities for FastAPI applications."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "SURF", email = "automation-beheer@surf.nl" },
+]
+requires-python = ">=3.11,<3.15"
 classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
@@ -30,43 +31,54 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
 ]
-requires = [
-    "requests>=2.19.0",
+# Floors are the oldest releases that CI's `uv sync --resolution lowest-direct` actually
+# resolves on the supported pythons; anything lower is silently backtracked past and so is
+# never tested. fastapi <0.100 pins pydantic<2, requests <2.26 caps idna<3, and asyncstdlib
+# has no release before 3.9.0.
+dependencies = [
+    "requests>=2.26.0",
     "structlog>=20.2.0",
-    "fastapi>=0.90.1",
+    "fastapi>=0.100.0",
     "httpx[http2]>=0.23.0",
     "authlib>=1.6.6",
     "pydantic>=2",
-    "pydantic-settings",
+    "pydantic-settings>=2.0.1",
     "strawberry-graphql>=0.171.1",
-    "asyncstdlib",
+    "asyncstdlib>=3.9.0",
 ]
-description-file = "README.md"
-requires-python = ">=3.11,<3.15"
 
-[tool.flit.metadata.urls]
+[project.urls]
 Documentation = "https://workfloworchestrator.org/"
+Homepage = "https://github.com/workfloworchestrator/oauth2-lib"
 
-[tool.flit.metadata.requires-extra]
+# Local dependencies for development.
+# Lower bounds are required: CI runs `uv sync --resolution lowest-direct`, which
+# would otherwise resolve unbounded entries to their oldest release on PyPI.
+[dependency-groups]
 test = [
-    "apache-license-check",
-    "black",
-    "ruff",
-    "mypy",
-    "pygments",
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "pytest-xdist",
-    "requests_mock",
+    "apache-license-check>=1.0.0",
+    "black>=24.10.0",
+    "ruff>=0.15.11",
+    "mypy==1.18.2",
+    "pygments>=2.18.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.6.1",
+    "requests_mock>=1.12.1",
     "urllib3_mock==0.3.3",
 ]
-dev = ["bumpversion", "pre-commit"]
+dev = ["pre-commit>=4.2.0"]
 
-[tool.isort]
-profile = "black"
-line_length = 120
-skip = ["src", "venv"]
+[build-system]
+requires = ["uv_build>=0.10,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "oauth2_lib"
+module-root = ""
+# Ship the test suite in the sdist so downstream packagers can run it from the tarball.
+source-include = ["tests/**"]
 
 [tool.black]
 line-length = 120
@@ -85,10 +97,6 @@ exclude = '''
   )/
 )
 '''
-
-
-[tool.nitpick]
-style = "github://workfloworchestrator/nitpick-style@main/nitpick-style.toml"
 
 [tool.ruff]
 exclude = [
@@ -146,3 +154,43 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.coverage.run]
+source = ["oauth2_lib"]
+omit = ["tests/*"]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --doctest-ignore-import-errors"
+norecursedirs = [".git", "build", "dist", "*.egg", "__pycache__", ".cache", ".*", "migrations", "docs"]
+testpaths = ["tests/"]
+filterwarnings = [
+    "ignore::DeprecationWarning:werkzeug",
+    "ignore::DeprecationWarning:jinja2",
+    "ignore::DeprecationWarning:jsonschema",
+    "ignore::DeprecationWarning:yaml",
+]
+
+[tool.mypy]
+plugins = ["pydantic.mypy", "strawberry.ext.mypy_plugin"]
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_no_return = true
+warn_unreachable = true
+implicit_reexport = false
+strict_equality = true
+show_error_codes = true
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_calls = false
+disallow_untyped_defs = false
