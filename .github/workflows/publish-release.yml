@@ -18,7 +18,8 @@ jobs:
       with:
         version: "0.12.3"
     - name: Build package
-      run: uv build
+      # Prevent local tool.uv.sources entries from leaking into the artifact.
+      run: uv build --no-sources
     - name: Upload dist artifact
       uses: actions/upload-artifact@v4
       with:
