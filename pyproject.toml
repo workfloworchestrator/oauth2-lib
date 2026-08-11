@@ -52,7 +52,7 @@ test = [
     "apache-license-check",
     "black",
     "ruff",
-    "mypy",
+    "mypy==1.18.2",
     "pygments",
     "pytest",
     "pytest-asyncio",
