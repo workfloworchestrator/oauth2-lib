@@ -28,8 +28,11 @@ The [orchestrator-core documentation](https://workfloworchestrator.org/orchestra
 ```python
 from httpx2 import AsyncClient  # was: from httpx import AsyncClient
 
+
 class MyOIDCAuth(OIDCAuth):
-    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel: ...
+    async def userinfo(
+        self, async_request: AsyncClient, token: str
+    ) -> OIDCUserModel: ...
 ```
 
 Annotations alone will only fail type checking, but any *value* you pass back into that client must
