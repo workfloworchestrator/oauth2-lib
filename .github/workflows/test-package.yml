@@ -37,7 +37,7 @@ jobs:
       - name: Test with pytest
         run: |
           mkdir reports
-          uv run pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-config=.coveragerc --cov-report=xml
+          uv run pytest -vvv --cov-branch --cov-fail-under=80 --cov=oauth2_lib --cov-report=xml
 #  coverage-combine:
 #    needs: [build]
 #    runs-on: ubuntu-latest

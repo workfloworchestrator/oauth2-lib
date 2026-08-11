@@ -154,3 +154,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.coverage.run]
+source = ["oauth2_lib"]
+omit = ["tests/*"]
