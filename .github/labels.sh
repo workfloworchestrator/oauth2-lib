@@ -23,7 +23,11 @@ set -euo pipefail
 # documentation, ...):
 #   kind/*  -> blue    (0052cc)
 #   exclusion marker -> grey (ededed)
+#
+# kind/breaking is the one deliberate exception: red (b60205), because it is the
+# label a reviewer most needs to spot on a PR list.
 labels=(
+  "kind/breaking|b60205|Breaking change — requires action from users when upgrading"
   "kind/feature|0052cc|New user-facing functionality"
   "kind/bug|0052cc|A confirmed bug fix"
   "kind/refactor|0052cc|Internal refactor with no behavior change"
