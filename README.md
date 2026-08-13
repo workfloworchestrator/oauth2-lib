@@ -23,22 +23,37 @@ The [orchestrator-core documentation](https://workfloworchestrator.org/orchestra
 
 3.0.0 replaces `httpx` with [`httpx2`](https://httpx2.pydantic.dev). The client passed to
 `OIDCAuth.userinfo()`, `OIDCAuth.check_openid_config()` and `OPAMixin.get_decision()` is now an
-`httpx2.AsyncClient`, so subclasses must import from `httpx2` instead of `httpx`:
+`httpx2.AsyncClient`.
+
+The annotation only affects type checking, but any *value* you pass back into that client must come
+from `httpx2` too — an `httpx.BasicAuth`, `Timeout` or `Limits` raises `TypeError` at runtime:
 
 ```python
-from httpx2 import AsyncClient  # was: from httpx import AsyncClient
+# Before
+from httpx import AsyncClient, BasicAuth
 
 
 class MyOIDCAuth(OIDCAuth):
-    async def userinfo(
-        self, async_request: AsyncClient, token: str
-    ) -> OIDCUserModel: ...
+    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
+        response = await async_request.post(url, auth=BasicAuth(id, secret))
+        return OIDCUserModel(response.json())
+
+
+# After
+from httpx2 import AsyncClient
+
+
+class MyOIDCAuth(OIDCAuth):
+    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
+        response = await async_request.post(url, auth=(id, secret))
+        return OIDCUserModel(response.json())
 ```
 
-Annotations alone will only fail type checking, but any *value* you pass back into that client must
-also come from `httpx2` — an `httpx.BasicAuth`, `Timeout` or `Limits` raises `TypeError` at runtime.
+A plain `(id, secret)` tuple is accepted by both stacks, so that part can land before you upgrade.
+
 The `httpx[http2]` extra is gone as well; the library only ever made HTTP/1.1 requests, so `h2` is no
-longer installed transitively.
+longer installed transitively. If you relied on oauth2-lib to pull `httpx` into your environment,
+declare it yourself.
 
 ## Installation
 

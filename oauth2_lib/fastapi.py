@@ -31,7 +31,7 @@ from oauth2_lib.settings import oauth2lib_settings
 
 logger = get_logger(__name__)
 
-HTTPX_SSL_CONTEXT = ssl.create_default_context()  # https://github.com/encode/httpx/issues/838
+HTTPX_SSL_CONTEXT = ssl.create_default_context()
 
 
 def _new_async_client() -> AsyncClient:
