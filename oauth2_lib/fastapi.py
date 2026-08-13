@@ -20,7 +20,7 @@ from typing import Any, Optional, cast
 from fastapi import HTTPException
 from fastapi.requests import Request
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
-from httpx import AsyncClient, NetworkError
+from httpx2 import AsyncClient, NetworkError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
 from starlette.status import HTTP_401_UNAUTHORIZED
@@ -31,7 +31,17 @@ from oauth2_lib.settings import oauth2lib_settings
 
 logger = get_logger(__name__)
 
-HTTPX_SSL_CONTEXT = ssl.create_default_context()  # https://github.com/encode/httpx/issues/838
+HTTPX_SSL_CONTEXT = ssl.create_default_context()
+
+
+def _new_async_client() -> AsyncClient:
+    """Build the one kind of client this module makes.
+
+    Do not drop `verify=HTTPX_SSL_CONTEXT` in favour of httpx2's `verify=True` default: since httpx2
+    2.3.0 that trusts the operating system's store via `truststore`, where the explicit context keeps
+    the OpenSSL defaults we have always verified against.
+    """
+    return AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT)
 
 
 class OIDCUserModel(dict):
@@ -206,7 +216,7 @@ class OIDCAuth(Authentication):
         if not token:
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_client:
+        async with _new_async_client() as async_client:
             await self.check_openid_config(async_client)
 
             user_info: OIDCUserModel = await self.userinfo(async_client, token)
@@ -356,7 +366,7 @@ class OPAAuthorization(Authorization, OPAMixin):
             }
         }
 
-        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
+        async with _new_async_client() as async_request:
             decision = await self.get_decision(async_request, opa_input)
 
         context = {
@@ -396,7 +406,7 @@ class GraphQLOPAAuthorization(GraphqlAuthorization, OPAMixin):
             }
         }
 
-        async with AsyncClient(http1=True, verify=HTTPX_SSL_CONTEXT) as async_request:
+        async with _new_async_client() as async_request:
             decision = await self.get_decision(async_request, opa_input)
 
         context = {"resource": opa_input["input"]["resource"], "input": opa_input}

@@ -1,6 +1,6 @@
 [project]
 name = "oauth2-lib"
-version = "2.7.0"
+version = "3.0.0"
 description = "Authentication and authorization utilities for FastAPI applications."
 readme = "README.md"
 license = "Apache-2.0"
@@ -39,7 +39,9 @@ dependencies = [
     "requests>=2.26.0",
     "structlog>=20.2.0",
     "fastapi>=0.100.0",
-    "httpx[http2]>=0.23.0",
+    # httpx2 <2.1 has no Python 3.14 support and <2.4 misses several fixes. Capped at <3 because
+    # 2.3.0 changed the default trust store in a minor release.
+    "httpx2>=2.4,<3",
     "authlib>=1.6.6",
     "pydantic>=2",
     "pydantic-settings>=2.0.1",
@@ -58,6 +60,11 @@ Homepage = "https://github.com/workfloworchestrator/oauth2-lib"
 test = [
     "apache-license-check>=1.0.0",
     "black>=24.10.0",
+    # Only for starlette's TestClient in tests/strawberry. TestClient needs an HTTP client, and
+    # prefers httpx2 from starlette 1.3.0 on -- but fastapi caps starlette until 0.135.0, so the
+    # `lowest-direct` CI leg resolves fastapi 0.100.0 -> starlette 0.27, which imports httpx by name.
+    # Drop this once the fastapi floor reaches 0.135.0; nothing else in the project uses httpx.
+    "httpx>=0.23.0",
     "ruff>=0.15.11",
     "mypy==1.18.2",
     "pygments>=2.18.0",
@@ -137,7 +144,7 @@ ignore = [
     "N802",
     "N801",
     "N818",
-    "S113", # HTTPX has a default timeout
+    "S113", # HTTPX2 has a default timeout
 ]
 select = [
     "B",

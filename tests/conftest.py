@@ -2,7 +2,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient, Response
+from httpx2 import AsyncClient, Response
 from urllib3_mock import Responses
 
 
@@ -26,13 +26,13 @@ class AsyncClientMock:
 
 @pytest.fixture(scope="session")
 def make_mock_async_client():
-    """Creates a mocked httpx.AsyncClient.
+    """Creates a mocked httpx2.AsyncClient.
 
     Parameters:
     - mock_response: MockResponse | List[MockResponse] | None. Defines mock HTTP responses.
 
     Returns:
-    - A mocked httpx.AsyncClient instance for testing HTTP requests.
+    - A mocked httpx2.AsyncClient instance for testing HTTP requests.
 
     Usage:
     Pass a MockResponse for single or list for multiple sequential HTTP responses.

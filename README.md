@@ -19,6 +19,42 @@ Most notable are:
 
 The [orchestrator-core documentation](https://workfloworchestrator.org/orchestrator-core) has a section on Authentication and Authorization that describes how to use/override these classes.
 
+## Upgrading to 3.0.0
+
+3.0.0 replaces `httpx` with [`httpx2`](https://httpx2.pydantic.dev). The client passed to
+`OIDCAuth.userinfo()`, `OIDCAuth.check_openid_config()` and `OPAMixin.get_decision()` is now an
+`httpx2.AsyncClient`.
+
+The annotation only affects type checking, but any *value* you pass back into that client must come
+from `httpx2` too — an `httpx.BasicAuth`, `Timeout` or `Limits` raises `TypeError` at runtime:
+
+```python
+# Before
+from httpx import AsyncClient, BasicAuth
+
+
+class MyOIDCAuth(OIDCAuth):
+    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
+        response = await async_request.post(url, auth=BasicAuth(id, secret))
+        return OIDCUserModel(response.json())
+
+
+# After
+from httpx2 import AsyncClient
+
+
+class MyOIDCAuth(OIDCAuth):
+    async def userinfo(self, async_request: AsyncClient, token: str) -> OIDCUserModel:
+        response = await async_request.post(url, auth=(id, secret))
+        return OIDCUserModel(response.json())
+```
+
+A plain `(id, secret)` tuple is accepted by both stacks, so that part can land before you upgrade.
+
+The `httpx[http2]` extra is gone as well; the library only ever made HTTP/1.1 requests, so `h2` is no
+longer installed transitively. If you relied on oauth2-lib to pull `httpx` into your environment,
+declare it yourself.
+
 ## Installation
 
 To install the package from PyPI:
