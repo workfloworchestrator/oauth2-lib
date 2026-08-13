@@ -24,3 +24,4 @@ kind/build:
       - any-glob-to-any-file:
           - "pyproject.toml"
           - "uv.lock"
+          - "renovate.json"
