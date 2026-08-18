@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 from fastapi import HTTPException
-from httpx2 import NetworkError
+from httpx2 import NetworkError, ProxyError, ReadTimeout
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 
@@ -73,12 +73,14 @@ async def test_opa_decision_user_not_allowed(make_mock_async_client, mock_reques
     "make_error",
     [
         pytest.param(TypeError, id="TypeError"),
-        # Must be httpx2's NetworkError; httpx's is a different class and would escape the except in
+        # Must be httpx2's classes; httpx's are unrelated and would escape the except in
         # get_decision. Built per-case: a shared instance retains its traceback for the session.
         pytest.param(lambda: NetworkError("connection refused"), id="NetworkError"),
+        pytest.param(lambda: ReadTimeout("opa is slow"), id="ReadTimeout"),
+        pytest.param(lambda: ProxyError("no proxy"), id="ProxyError"),
     ],
 )
-async def test_opa_decision_network_or_type_error(make_error, make_mock_async_client, mock_request):
+async def test_opa_decision_transport_or_type_error(make_error, make_mock_async_client, mock_request):
     mock_async_client = make_mock_async_client(MockResponse(error=make_error()))
 
     with mock.patch("oauth2_lib.fastapi.AsyncClient", return_value=mock_async_client):
