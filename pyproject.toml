@@ -1,6 +1,6 @@
 [project]
 name = "oauth2-lib"
-version = "3.0.0"
+version = "3.0.1"
 description = "Authentication and authorization utilities for FastAPI applications."
 readme = "README.md"
 license = "Apache-2.0"

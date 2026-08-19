@@ -20,7 +20,7 @@ from typing import Any, Optional, cast
 from fastapi import HTTPException
 from fastapi.requests import Request
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
-from httpx2 import AsyncClient, NetworkError
+from httpx2 import AsyncClient, TransportError
 from pydantic import BaseModel
 from starlette.requests import ClientDisconnect, HTTPConnection
 from starlette.status import HTTP_401_UNAUTHORIZED
@@ -301,7 +301,7 @@ class OPAMixin:
         logger.debug("Posting input json to Policy agent", opa_url=self.opa_url, input=opa_input)
         try:
             result = await async_client.post(self.opa_url, json=opa_input)
-        except (NetworkError, TypeError) as exc:
+        except (TransportError, TypeError) as exc:
             logger.debug("Could not get decision from policy agent", error=str(exc))
             raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail="Policy agent is unavailable")
 
