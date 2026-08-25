@@ -14,7 +14,7 @@ jobs:
       - run: echo "::set-output name=should_cancel::$(expr `date +%W` % 2)"
         id: week-modulo
       - name: Cancel workflow every other week
-        uses: andymckay/cancel-action@8f8510d9dea52fcc8eb6ca10d6ce47fd5fc43cd8 # 0.2
+        uses: andymckay/cancel-action@a955d435292c0d409d104b57d8e78435a93a6ef1 # 0.5
         if: ${{ steps.week-modulo.outputs.should_cancel == '1' }}
 
   run_build:
