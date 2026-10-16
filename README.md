@@ -91,19 +91,17 @@ uv run pytest
 
 ### Pre-commit
 
-This project uses [pre-commit](https://pre-commit.com/) to automatically run a number of checks before making a git commit.
+This project uses [prek](https://prek.j178.dev/), a fast drop-in replacement for [pre-commit](https://pre-commit.com/), to automatically run a number of checks before making a git commit.
 The same checks will be performed in the CI pipeline so this can save you some time.
 
-First ensure you have pre-commit installed.
-It is recommended to install it outside the virtualenv.
-On Linux and Mac, pre-commit is available in most package managers. Alternatively you can install it globally with [pipx](https://github.com/pypa/pipx).
-
-Once pre-commit is installed, go into the project root and enable it:
+prek is part of the `dev` dependency group, so it is available after `uv sync`.
+Go into the project root and enable it:
 ```bash
-pre-commit install
+uv run prek install
 ```
 
-This should output `pre-commit installed at .git/hooks/pre-commit`. The next time you run `git commit` the pre-commit hooks will validate your changes.
+This should output `prek installed at .git/hooks/pre-commit`. The next time you run `git commit` the hooks will validate your changes.
+To run the hooks manually on all files, use `uv run prek run --all-files`.
 
 ### Set the package version
 
