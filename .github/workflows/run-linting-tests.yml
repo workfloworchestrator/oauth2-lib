@@ -1,4 +1,4 @@
-# Runs the pre-commit suite and the license header check. Both are independent of the
+# Runs the pre-commit hooks (via prek) and the license header check. Both are independent of the
 # python version -- most prek hooks build their own isolated environment -- so this
 # does not need the python version matrix that test-package.yml uses.
 

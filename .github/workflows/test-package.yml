@@ -46,7 +46,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - name: Install dependencies
-        # The 'dev' group (pre-commit) is not needed here; linting runs in
+        # The 'dev' group (prek) is not needed here; linting runs in
         # run-linting-tests.yml. It is synced anyway as uv's default group.
         run: |
           case "${{ matrix.resolution }}" in
