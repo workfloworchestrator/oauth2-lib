@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-26.04
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
         resolution: ['locked']
         # Every include entry must spell out both keys. GitHub only merges an include
         # into an existing combination when it overwrites no original key; because
@@ -27,10 +27,12 @@ jobs:
             resolution: 'lowest-direct'
           - python-version: '3.12'
             resolution: 'lowest-direct'
-          # Ceiling: latest release of everything, on the two newest pythons.
+          # Ceiling: latest release of everything, on the newest pythons.
           - python-version: '3.13'
             resolution: 'highest'
           - python-version: '3.14'
+            resolution: 'highest'
+          - python-version: '3.15'
             resolution: 'highest'
       fail-fast: false
     steps:
