@@ -1,9 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "local>workfloworchestrator/renovate-config#initial-presets",
-    "local>workfloworchestrator/renovate-config//languages/python#initial-presets",
-    "local>workfloworchestrator/renovate-config//projects/library#initial-presets",
-    "local>workfloworchestrator/renovate-config//extras/release-notes#initial-presets"
+    "local>workfloworchestrator/renovate-config",
+    "local>workfloworchestrator/renovate-config//languages/python",
+    "local>workfloworchestrator/renovate-config//projects/library",
+    "local>workfloworchestrator/renovate-config//extras/release-notes"
   ]
 }
