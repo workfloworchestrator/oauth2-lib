@@ -1,0 +1,33 @@
+name: CI
+
+# Single PR/push entry point for CI
+# For PRs the final 'CI result' job must pass in order to merge
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    uses: ./.github/workflows/test-package.yml
+    # CODECOV_TOKEN for the coverage upload
+    secrets: inherit
+
+  linting-tests:
+    name: Linting tests
+    uses: ./.github/workflows/run-linting-tests.yml
+
+  gate:
+    name: CI result
+    needs:
+      - unit-tests
+      - linting-tests
+    runs-on: ubuntu-slim
+    if: always()
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
