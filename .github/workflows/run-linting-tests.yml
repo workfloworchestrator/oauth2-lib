@@ -4,11 +4,8 @@
 
 name: Linting tests
 
+# Invoked indirectly from (at the moment) ci.yml and scheduled-build.yml
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_call:
 
 jobs:
