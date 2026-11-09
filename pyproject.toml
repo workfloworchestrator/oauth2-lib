@@ -39,15 +39,15 @@ classifiers = [
 dependencies = [
     "requests>=2.26.0",
     "structlog>=20.2.0",
-    "fastapi>=0.100.0",
+    "fastapi>=0.112.0",
     # httpx2 <2.1 has no Python 3.14 support and <2.4 misses several fixes. Capped at <3 because
     # 2.3.0 changed the default trust store in a minor release.
     "httpx2>=2.4,<3",
     "authlib>=1.6.6",
-    "pydantic>=2",
-    "pydantic-settings>=2.0.1",
-    "strawberry-graphql>=0.171.1",
-    "asyncstdlib>=3.9.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.5.0",
+    "strawberry-graphql>=0.238.0",
+    "asyncstdlib>=3.12.0",
 ]
 
 [project.urls]
