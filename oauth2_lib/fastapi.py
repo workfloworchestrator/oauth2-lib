@@ -161,9 +161,12 @@ class HttpBearerExtractor(HTTPBearer, IdTokenExtractor):
     def __init__(self, auto_error: bool = False):
         super().__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
+    async def __call__(self, request: HTTPConnection) -> HTTPAuthorizationCredentials | None:
         """Extract the Authorization header from the request."""
-        return await super().__call__(request)
+        # Widen the parameter to HTTPConnection as fastapi >= 0.144 does; the cast keeps this
+        # subclass type-checking against fastapi <= 0.143, which still annotates the supertype
+        # with Request. Purely a typing matter: HTTPBearer only reads request.headers.
+        return await super().__call__(cast(Request, request))
 
     async def extract(self, request: Request) -> str | None:
         """Extract the token from the Authorization header in the request."""
